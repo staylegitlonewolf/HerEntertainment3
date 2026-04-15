@@ -1444,9 +1444,9 @@ document.addEventListener("DOMContentLoaded", () => {
       stack.className = "global-action-stack";
       stack.innerHTML = `
         <button id="global-stack-toggle" class="global-fab global-fab--toggle" aria-label="Menu">☰</button>
-        <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
-        <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
         <div class="global-action-stack-menu">
+          <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
+          <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
           <button id="global-layout-btn" class="global-fab global-fab--stack">Layout</button>
           <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
           <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
@@ -1467,14 +1467,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.body.appendChild(brand);
     }
 
-    if (!document.getElementById("slwu-layout-pin")) {
-      const btn = document.createElement("button");
-      btn.id = "slwu-layout-pin";
-      btn.type = "button";
-      btn.className = "slwu-layout-pin";
-      btn.textContent = "Layout: Classic";
-      document.body.appendChild(btn);
-    }
+    document.getElementById("slwu-layout-pin")?.remove();
 
     if (!document.getElementById("slwu-profile-modal")) {
       const modal = document.createElement("div");
@@ -1667,7 +1660,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const menuToggle = document.getElementById("global-stack-toggle");
     const homeBtn = document.getElementById("global-home-btn");
     const layoutBtn = document.getElementById("global-layout-btn");
-    const layoutPin = document.getElementById("slwu-layout-pin");
     const appFsBtn = document.getElementById("global-appfs-btn");
     const scale = document.getElementById("global-scale-btn");
     const tvMenuBtn = document.getElementById("global-tv-btn");
@@ -1689,7 +1681,6 @@ document.addEventListener("DOMContentLoaded", () => {
       body.classList.toggle("layout-netflix", m === "netflix");
       localStorage.setItem(LAYOUT_KEY, m);
       const label = m === "netflix" ? "Netflix" : "Classic";
-      if (layoutPin) layoutPin.textContent = `Layout: ${label}`;
       if (layoutBtn) layoutBtn.textContent = `Layout: ${label}`;
     };
     applyLayout(getLayout());
@@ -1698,6 +1689,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const openSearchSheet = (opts = {}) => {
       closeAllSheets();
       body.classList.add("sheet-open");
+      body.classList.remove("stack-open");
       renderSearchMyList();
       const input = document.getElementById("global-search-input");
       const results = document.getElementById("global-search-results");
@@ -1731,7 +1723,6 @@ document.addEventListener("DOMContentLoaded", () => {
       location.href = homeRoute();
     };
     if (layoutBtn) layoutBtn.onclick = () => toggleLayout();
-    if (layoutPin) layoutPin.onclick = () => toggleLayout();
     if (myListBtn) myListBtn.onclick = () => {
       openSearchSheet({ prefill: "" });
       const results = document.getElementById("global-search-results");
@@ -1761,6 +1752,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (catalogBtn) catalogBtn.onclick = () => {
       closeAllSheets();
       body.classList.add("catalog-open");
+      body.classList.remove("stack-open");
       renderGlobalCatalog();
     };
     if (searchFab) searchFab.onclick = () => openSearchSheet();
@@ -1966,13 +1958,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const items = HiddenList.get();
     box.innerHTML = items.length ? "" : '<div class="tvremote-empty">Nothing hidden yet.</div>';
     items.slice(0, 40).forEach(item => {
-      const btn = document.createElement("button");
-      btn.className = "global-search-list-item";
       const title = item.title || item.name || "Hidden Item";
-      const poster = item.poster ? `${IMG_W500}${item.poster}` : posterUrl(item.poster_path || item.poster);
-      btn.innerHTML = `${poster ? `<img src="${esc(poster)}" alt="${esc(title)}" loading="lazy">` : `<span class="global-search-list-thumb-fallback">${esc(title.slice(0,1))}</span>`}<span class="global-search-list-label">${esc(title)}</span>`;
-      btn.onclick = () => { HiddenList.remove(item.id, item.type); renderHiddenList(); };
-      box.appendChild(btn);
+      const poster = item.poster ? `${IMG_W500}${item.poster}` : posterUrl(item.poster_path || item.poster) || "";
+      const card = document.createElement("article");
+      card.className = "tvremote-card tvremote-card--restore";
+      card.innerHTML = `
+        <button class="tvremote-card-wish in-list" aria-label="Restore">↩</button>
+        ${poster ? `<img src="${esc(poster)}" alt="${esc(title)}" loading="lazy">` : `<div class="tvremote-card-fallback">${esc(title.slice(0,1))}</div>`}
+        <div class="tvremote-card-info">
+          <div class="tvremote-card-title">${esc(title)}</div>
+          <div class="tvremote-card-meta">RESTORE</div>
+        </div>
+      `;
+      const restore = () => {
+        HiddenList.remove(item.id, item.type);
+        renderHiddenList();
+      };
+      card.onclick = (e) => {
+        if (e.target.closest(".tvremote-card-wish")) return;
+        restore();
+      };
+      card.querySelector(".tvremote-card-wish").onclick = (e) => {
+        e.stopPropagation();
+        restore();
+      };
+      box.appendChild(card);
     });
   }
 

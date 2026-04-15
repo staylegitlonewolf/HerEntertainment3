@@ -29,6 +29,12 @@
   --transition:   0.3s ease;
 }
 
+body.layout-netflix{
+  --purple: #e50914;
+  --purple-light: #ff4b4b;
+  --purple-dark: #b20710;
+}
+
 
 html { scroll-behavior: smooth; }
 
@@ -2405,27 +2411,6 @@ body.nav-collapsed #navbar{transform:translate(-50%,-120%)}
 #slwu-brand-pin{
   position:fixed;right:10px;bottom:10px;z-index:1200;
   font-size:15px;color:rgba(255,255,255,.72);letter-spacing:.03em;
-}
-
-.slwu-layout-pin{
-  position: fixed;
-  left: 14px;
-  top: 14px;
-  z-index: 1200;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(139,92,246,.28);
-  background: rgba(10,10,12,.55);
-  color: rgba(255,255,255,.9);
-  font-weight: 800;
-  letter-spacing: .02em;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 22px rgba(139,92,246,.18), 0 14px 40px rgba(0,0,0,.45);
-  cursor: pointer;
-}
-.slwu-layout-pin:hover{
-  border-color: rgba(139,92,246,.5);
-  box-shadow: 0 0 28px rgba(139,92,246,.25), 0 18px 60px rgba(0,0,0,.55);
 }
 
 .slwu-route-shell{
