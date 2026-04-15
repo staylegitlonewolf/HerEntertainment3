@@ -1,0 +1,5 @@
+Patched null #categories error in initHomePage.
+Removed duplicate allowfullscreen warning from iframe HTML.
+Added /owner/ and /categories/ folder routes and top-level HTML fallbacks.
+Kept /profile/ and /theater/ folder routes in the package.
+Playback provider 500/403 errors are third-party source failures, not parent-page JS.

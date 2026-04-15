@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/hooks/uselegacyboot.ts","./src/legacy/legacy.ts","./src/pages/catalogpage.tsx","./src/pages/homepage.tsx","./src/pages/moviepage.tsx","./src/pages/ownerpage.tsx","./src/pages/profilepage.tsx","./src/pages/searchpage.tsx","./src/pages/theaterpage.tsx","./src/pages/tvpage.tsx"],"version":"5.9.3"}

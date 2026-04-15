@@ -1,0 +1,11 @@
+Final polish build:
+- fixed /profile/?name=... routing by using repo-aware appUrl/appHref links
+- taller global search drawer (80vh)
+- click outside search drawer closes it
+- clear buttons in global search and TV remote search inputs
+- smaller remote/global search thumbnails
+- global right-side stacked action menu (My List / Theater / Search)
+- top nav logo removed from live UI
+- My List drawer items now show thumbnail + title
+- movie page gets a Watch in Theater button next to Add to My List
+- TVx scaling label added for the left scale button

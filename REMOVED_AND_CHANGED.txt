@@ -1,0 +1,14 @@
+Removed / changed:
+- removed page ad scripts, ad containers, sponsored links, and footer
+- removed auth / profiles legacy pages from navigation flow
+- added global TV remote, search sheet, theater button, profile modal, QR
+- added local profile page and theater page
+- added fixed bottom title and 2x UI toggle
+- remote search keeps its own scroll area
+- search cards include wishlist button
+- now playing preview added inside TV remote
+
+Important:
+- Embedded third-party players are still controlled on a best-effort basis.
+- Cross-device live sync without a backend is not fully possible in a static build.
+- This build uses localStorage + BroadcastChannel for same-browser/session style syncing.

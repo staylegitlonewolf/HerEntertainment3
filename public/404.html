@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SheLivesWithUs</title>
+  </head>
+  <body>
+    <script>
+      // GitHub Pages SPA fallback: redirect all unknown routes to the SPA entry.
+      // Keeps the original path+query in the hash so React Router can recover it.
+      (function () {
+        var loc = window.location
+        var path = loc.pathname + loc.search + loc.hash
+        loc.replace(loc.origin + loc.pathname.replace(/\/[^/]*$/, '/') + '#/' + path.replace(/^\//, ''))
+      })()
+    </script>
+  </body>
+</html>
+

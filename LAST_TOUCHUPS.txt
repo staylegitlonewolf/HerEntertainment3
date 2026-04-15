@@ -1,0 +1,10 @@
+This build includes the latest UI touchups requested:
+- theater sidebar toggle changed to icon
+- theater sidebar now includes TV, Home, Profile in top row
+- theater My List shows poster thumbnail + title
+- theater collapse expands player area via layout class
+- global search sheet stays pinned at 80vh with sticky input bar
+- TV remote removed Back and duplicate My List control row
+- TV remote Now Playing moved to header and controls tightened
+- profile/theater internal links switched to repo-aware absolute appUrl paths
+- action stack toggle uses icon style
