@@ -1476,6 +1476,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="global-action-stack-menu">
           <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
           <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
+          <button id="global-topnav-btn" class="global-fab global-fab--stack">Menu Bar</button>
           <button id="global-layout-btn" class="global-fab global-fab--stack">Layout</button>
           <button id="global-server-btn" class="global-fab global-fab--stack">Server</button>
           <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
@@ -1707,6 +1708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const hiddenBtn = document.getElementById("global-hidden-btn");
     const menuToggle = document.getElementById("global-stack-toggle");
     const homeBtn = document.getElementById("global-home-btn");
+    const topNavBtn = document.getElementById("global-topnav-btn");
     const layoutBtn = document.getElementById("global-layout-btn");
     const serverBtn = document.getElementById("global-server-btn");
     const appFsBtn = document.getElementById("global-appfs-btn");
@@ -1741,6 +1743,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (serverBtn) serverBtn.textContent = label;
     };
     applyServerLabel();
+
+    const applyTopNavLabel = () => {
+      const label = body.classList.contains("nav-collapsed") ? "Menu Bar: Off" : "Menu Bar: On";
+      if (topNavBtn) topNavBtn.textContent = label;
+    };
+    applyTopNavLabel();
 
     const refreshCurrentEmbeds = () => {
       const params = new URLSearchParams(location.search);
@@ -1809,6 +1817,11 @@ document.addEventListener("DOMContentLoaded", () => {
       closeAllSheets();
       body.classList.remove("stack-open", "remote-open");
       location.href = homeRoute();
+    };
+    if (topNavBtn) topNavBtn.onclick = () => {
+      body.classList.toggle("nav-collapsed");
+      body.classList.remove("stack-open");
+      applyTopNavLabel();
     };
     if (layoutBtn) layoutBtn.onclick = () => toggleLayout();
     if (serverBtn) serverBtn.onclick = () => {
