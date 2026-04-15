@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useLegacyBoot } from '../hooks/useLegacyBoot'
 
 export default function SearchPage() {
@@ -12,21 +13,23 @@ export default function SearchPage() {
     <>
       <nav id="navbar" className="navbar-solid">
         <div className="nav-left">
-          <a href={import.meta.env.BASE_URL} className="nav-logo">
+          <Link to="/" className="nav-logo">
             SHELIVESWITHUS
-          </a>
+          </Link>
           <ul className="nav-links">
             <li>
-              <a href={import.meta.env.BASE_URL}>Home</a>
+              <Link to="/">Home</Link>
             </li>
             <li>
-              <a href={`${import.meta.env.BASE_URL}search?type=movie`}>Movies</a>
+              <Link to="/search?type=movie">Movies</Link>
             </li>
             <li>
-              <a href={`${import.meta.env.BASE_URL}search?type=tv`}>TV Shows</a>
+              <Link to="/search?type=tv">TV Shows</Link>
             </li>
             <li>
-              <a href={`${import.meta.env.BASE_URL}#my-list`}>My List</a>
+              <button type="button" id="my-list-nav" className="nav-link-btn">
+                My List
+              </button>
             </li>
           </ul>
         </div>

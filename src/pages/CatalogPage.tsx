@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useLegacyBoot } from '../hooks/useLegacyBoot'
 
 const CATALOG_GENRES: Array<{ label: string; path: string }> = [
@@ -22,21 +23,21 @@ export default function CatalogPage() {
     <div className="slwu-route-shell" id="legacy-mount">
       <div className="slwu-route-card">
         <div className="slwu-route-top">
-          <a href="/" className="slwu-back-link">
+          <Link to="/" className="slwu-back-link">
             ← Back
-          </a>
+          </Link>
           <h1>Catalog</h1>
         </div>
         <div className="categories-grid">
           {CATALOG_GENRES.map((g) => (
-            <a
+            <Link
               key={g.label}
               className="remote-pill remote-pill--catalog"
-              href={`${import.meta.env.BASE_URL}search?category=${encodeURIComponent(g.label.toLowerCase())}`}
+              to={`/search?category=${encodeURIComponent(g.label.toLowerCase())}`}
               data-path={g.path}
             >
               {g.label}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

@@ -3,19 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SheLivesWithUs</title>
-  </head>
-  <body>
+    <title>Redirecting…</title>
     <script>
-      // GitHub Pages SPA fallback for BrowserRouter.
-      // Store the attempted URL and redirect to the project root; index.html restores it.
-      (function () {
-        var loc = window.location
-        try {
-          sessionStorage.setItem('gh_pages_path', loc.pathname + loc.search + loc.hash)
-        } catch (e) {}
-        loc.replace(loc.origin + '/HerEntertainment3/')
+      ;(function () {
+        // GitHub Pages project site base path
+        const base = '/HerEntertainment3'
+        const path = window.location.pathname.startsWith(base)
+          ? window.location.pathname.slice(base.length)
+          : window.location.pathname
+        const search = window.location.search ? window.location.search.replace(/&/g, '~and~') : ''
+        const next = `${base}/?/${path.replace(/^\\/+/, '')}${search}${window.location.hash || ''}`
+        window.location.replace(next)
       })()
     </script>
-  </body>
+  </head>
+  <body></body>
 </html>
+

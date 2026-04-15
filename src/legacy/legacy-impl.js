@@ -12,37 +12,8 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG_W500  = "https://image.tmdb.org/t/p/w500";
 const IMG_ORIG  = "https://image.tmdb.org/t/p/original";
 
-const SERVER_KEY = "slwu_server_mode";
-function getServerMode() {
-  const v = localStorage.getItem(SERVER_KEY) || "vidking";
-  return ["vidking", "vidsrc"].includes(v) ? v : "vidking";
-}
-function setServerMode(mode) {
-  const m = mode === "vidsrc" ? "vidsrc" : "vidking";
-  localStorage.setItem(SERVER_KEY, m);
-}
-function movieEmbedSrc(id) {
-  const sid = String(id);
-  switch (getServerMode()) {
-    case "vidsrc":
-      return `https://vidsrc.to/embed/movie/${encodeURIComponent(sid)}`;
-    case "vidking":
-    default:
-      return `https://www.vidking.net/embed/movie/${encodeURIComponent(sid)}?color=8B5CF6&autoPlay=false`;
-  }
-}
-function tvEmbedSrc(id, season = 1, episode = 1) {
-  const sid = String(id);
-  const s = Math.max(1, parseInt(season, 10) || 1);
-  const e = Math.max(1, parseInt(episode, 10) || 1);
-  switch (getServerMode()) {
-    case "vidsrc":
-      return `https://vidsrc.to/embed/tv/${encodeURIComponent(sid)}/${s}/${e}`;
-    case "vidking":
-    default:
-      return `https://www.vidking.net/embed/tv/${encodeURIComponent(sid)}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
-  }
-}
+const VIDKING_MOVIE = (id)  => `https://www.vidking.net/embed/movie/${id}?color=8B5CF6&autoPlay=false`;
+const VIDKING_TV    = (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
 
 const PATH_PARTS = location.pathname.split('/').filter(Boolean);
 const SITE_ROOT = location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/';
@@ -81,6 +52,45 @@ function tvRoute(id, extra = {}) {
   u.searchParams.set("id", String(id));
   Object.entries(extra || {}).forEach(([k, v]) => u.searchParams.set(k, String(v)));
   return u.toString();
+}
+
+function spaNavigate(url) {
+  try {
+    const u = url instanceof URL ? url : new URL(String(url), location.href);
+    if (u.origin !== location.origin) {
+      location.href = u.toString();
+      return;
+    }
+    const next = `${u.pathname}${u.search}${u.hash}`;
+    if (next === `${location.pathname}${location.search}${location.hash}`) return;
+    history.pushState({}, "", next);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  } catch (e) {
+    location.href = String(url);
+  }
+}
+
+function initSpaLinkInterceptor() {
+  if (window.__slwu?._spaLinksWired) return;
+  window.__slwu = window.__slwu || {};
+  window.__slwu._spaLinksWired = true;
+  document.addEventListener("click", (e) => {
+    const a = e.target?.closest?.("a");
+    if (!a) return;
+    if (a.hasAttribute("data-spa-ignore")) return;
+    if (a.target && a.target !== "_self") return;
+    const href = a.getAttribute("href") || "";
+    if (!href || href.startsWith("#")) return;
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+    try {
+      const u = new URL(a.href, location.href);
+      if (u.origin !== location.origin) return;
+      e.preventDefault();
+      spaNavigate(u.toString());
+    } catch (_) {
+      // ignore
+    }
+  });
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -259,7 +269,7 @@ function initNavbar() {
 
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && searchInput.value.trim()) {
-        location.href = searchRoute({ q: searchInput.value.trim() });
+        spaNavigate(searchRoute({ q: searchInput.value.trim() }));
       }
       if (e.key === "Escape") {
         navSearch.classList.remove("open");
@@ -313,7 +323,7 @@ function initNavbar() {
             dd.remove();
             navSearch.classList.remove("open");
             searchInput.value = "";
-            location.href = type === "tv" ? tvRoute(item.id) : movieRoute(item.id);
+            spaNavigate(type === "tv" ? tvRoute(item.id) : movieRoute(item.id));
           };
           dd.appendChild(btn);
         });
@@ -381,7 +391,7 @@ function buildMovieCard(item, type = "movie") {
   // Click → detail page
   card.addEventListener("click", (e) => {
     if (e.target.closest(".card-action-btn")) return;
-    location.href = href;
+    spaNavigate(href);
   });
 
   // My List toggle
@@ -653,7 +663,7 @@ async function loadHero(item) {
     });
   }
   if (heroInfoBtn) {
-    heroInfoBtn.addEventListener("click", () => { location.href = href; });
+    heroInfoBtn.addEventListener("click", () => { spaNavigate(href); });
   }
   const heroButtons = document.querySelector(".hero-buttons");
   if (heroButtons && !document.getElementById("hero-list-btn")) {
@@ -705,7 +715,7 @@ async function initMoviePage() {
 
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
-  if (!id) { location.href = homeRoute(); return; }
+  if (!id) { spaNavigate(homeRoute()); return; }
 
   try {
     const movie = await tmdb(`/movie/${id}?append_to_response=credits,similar`);
@@ -769,15 +779,15 @@ async function initMoviePage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", movieEmbedSrc(id));
-        location.href = target.toString();
+        target.searchParams.set("src", VIDKING_MOVIE(id));
+        spaNavigate(target.toString());
       });
     }
 
     // Player
     const playerContainer = $("#player-container");
     if (playerContainer) {
-      playerContainer.innerHTML = `<iframe src="${movieEmbedSrc(id)}" allow="autoplay; fullscreen"></iframe>`;
+      playerContainer.innerHTML = `<iframe src="${VIDKING_MOVIE(id)}" allow="autoplay; fullscreen"></iframe>`;
     }
 
     // Sidebar poster
@@ -898,7 +908,7 @@ async function initTvPage() {
   const initSeason  = parseInt(params.get("season") || "1", 10);
   const initEpisode = parseInt(params.get("episode") || "1", 10);
 
-  if (!id) { location.href = homeRoute(); return; }
+  if (!id) { spaNavigate(homeRoute()); return; }
 
   let currentSeason  = initSeason;
   let currentEpisode = initEpisode;
@@ -962,8 +972,8 @@ async function initTvPage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", tvEmbedSrc(id, currentSeason, currentEpisode));
-        location.href = target.toString();
+        target.searchParams.set("src", VIDKING_TV(id, currentSeason, currentEpisode));
+        spaNavigate(target.toString());
       });
     }
 
@@ -971,7 +981,7 @@ async function initTvPage() {
     function loadPlayer(season, episode) {
       const pc = $("#player-container");
       if (pc) {
-        pc.innerHTML = `<iframe src="${tvEmbedSrc(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
+        pc.innerHTML = `<iframe src="${VIDKING_TV(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
       }
       // Update URL
       const url = new URL(location.href);
@@ -1269,7 +1279,7 @@ function initSearchPage() {
             </div>
           </div>
         `;
-        card.addEventListener("click", () => { location.href = href; });
+        card.addEventListener("click", () => { spaNavigate(href); });
         resultsEl.appendChild(card);
       });
 
@@ -1321,7 +1331,7 @@ function navigateWithLoader(href, backdropUrl, title) {
   // Store loader data for the target page
   sessionStorage.setItem('pt_play_loader', JSON.stringify({ backdrop: backdropUrl, title }));
   showPlayLoader(backdropUrl, title).then(() => {
-    location.href = href;
+    spaNavigate(href);
   });
 }
 
@@ -1476,17 +1486,21 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="global-action-stack-menu">
           <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
           <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
-          <button id="global-topnav-btn" class="global-fab global-fab--stack">Menu Bar</button>
-          <button id="global-layout-btn" class="global-fab global-fab--stack">Layout</button>
-          <button id="global-server-btn" class="global-fab global-fab--stack">Server</button>
-          <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
-          <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
-          <button id="global-scale-btn" class="global-fab global-fab--stack">1x</button>
-          <button id="global-profile-btn" class="global-fab global-fab--stack">Profile</button>
           <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
-          <button id="global-hidden-btn" class="global-fab global-fab--stack">Hidden</button>
-          <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
           <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
+          <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
+          <button id="global-more-btn" class="global-fab global-fab--stack">More</button>
+
+          <div id="global-more-menu" class="global-more-menu">
+            <button id="global-nav-toggle-btn" class="global-fab global-fab--stack">Menu</button>
+            <button id="global-layout-btn" class="global-fab global-fab--stack">Layout: Classic</button>
+            <button id="global-server-btn" class="global-fab global-fab--stack">Server: Auto</button>
+            <button id="global-profile-btn" class="global-fab global-fab--stack">Profile</button>
+            <button id="global-hidden-btn" class="global-fab global-fab--stack">Hidden</button>
+            <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
+            <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
+            <button id="global-scale-btn" class="global-fab global-fab--stack">1x</button>
+          </div>
         </div>
       `;
       document.body.appendChild(stack);
@@ -1497,8 +1511,6 @@ document.addEventListener("DOMContentLoaded", () => {
       brand.textContent = "SheLivesWithMe";
       document.body.appendChild(brand);
     }
-
-    document.getElementById("slwu-layout-pin")?.remove();
 
     if (!document.getElementById("slwu-profile-modal")) {
       const modal = document.createElement("div");
@@ -1512,24 +1524,6 @@ document.addEventListener("DOMContentLoaded", () => {
           <img id="slwu-profile-qr" alt="Profile QR Code" />
           <div class="slwu-modal-actions">
             <a class="btn btn-primary btn-3d" href="${appUrl('profile/')}">Open Profile</a>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-    }
-
-    if (!document.getElementById("slwu-server-modal")) {
-      const modal = document.createElement("div");
-      modal.id = "slwu-server-modal";
-      modal.className = "slwu-modal";
-      modal.innerHTML = `
-        <div class="slwu-modal-card">
-          <button class="slwu-modal-close" data-close-modal="server">×</button>
-          <h2>SERVER</h2>
-          <p class="slwu-route-note">Switch player embed source. If a provider is blocked, try the other.</p>
-          <div class="slwu-modal-actions" style="display:grid;gap:10px">
-            <button class="remote-btn" data-server-mode="vidking">Vidking (Default)</button>
-            <button class="remote-btn" data-server-mode="vidsrc">Vidsrc</button>
           </div>
         </div>
       `;
@@ -1708,8 +1702,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const hiddenBtn = document.getElementById("global-hidden-btn");
     const menuToggle = document.getElementById("global-stack-toggle");
     const homeBtn = document.getElementById("global-home-btn");
-    const topNavBtn = document.getElementById("global-topnav-btn");
+    const moreBtn = document.getElementById("global-more-btn");
     const layoutBtn = document.getElementById("global-layout-btn");
+    const navToggleBtn = document.getElementById("global-nav-toggle-btn");
     const serverBtn = document.getElementById("global-server-btn");
     const appFsBtn = document.getElementById("global-appfs-btn");
     const scale = document.getElementById("global-scale-btn");
@@ -1720,7 +1715,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchSheet = document.getElementById("global-search-sheet");
     const hiddenSheet = document.getElementById("global-hidden-sheet");
     const catalogSheet = document.getElementById("global-catalog-sheet");
-    const serverModal = document.getElementById("slwu-server-modal");
 
     const closeAllSheets = () => {
       body.classList.remove("sheet-open", "hidden-open", "catalog-open");
@@ -1738,46 +1732,35 @@ document.addEventListener("DOMContentLoaded", () => {
     applyLayout(getLayout());
     const toggleLayout = () => applyLayout(getLayout() === "netflix" ? "classic" : "netflix");
 
-    const applyServerLabel = () => {
-      const label = getServerMode() === "vidsrc" ? "Server: Vidsrc" : "Server: Vidking";
-      if (serverBtn) serverBtn.textContent = label;
+    const NAV_COLLAPSED_KEY = "slwu_nav_collapsed";
+    const applyNavCollapsed = (collapsed) => {
+      const c = !!collapsed;
+      body.classList.toggle("nav-collapsed", c);
+      localStorage.setItem(NAV_COLLAPSED_KEY, c ? "1" : "0");
+      if (navToggleBtn) navToggleBtn.textContent = `Menu Bar: ${c ? "Off" : "On"}`;
     };
-    applyServerLabel();
+    applyNavCollapsed(localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
 
-    const applyTopNavLabel = () => {
-      const label = body.classList.contains("nav-collapsed") ? "Menu Bar: Off" : "Menu Bar: On";
-      if (topNavBtn) topNavBtn.textContent = label;
+    const SERVER_KEY = "slwu_server_mode";
+    const SERVERS = ["auto", "oxygen", "hydrogen", "lithium"];
+    const serverLabel = (s) => {
+      if (s === "oxygen") return "Oxygen";
+      if (s === "hydrogen") return "Hydrogen";
+      if (s === "lithium") return "Lithium";
+      return "Auto";
     };
-    applyTopNavLabel();
-
-    const refreshCurrentEmbeds = () => {
-      const params = new URLSearchParams(location.search);
-      const id = params.get("id");
-      if (!id) return;
-      if (PAGE === "movie") {
-        const iframe = document.querySelector("#player-container iframe");
-        if (iframe) iframe.src = movieEmbedSrc(id);
-      } else if (PAGE === "tv") {
-        const season = params.get("season") || "1";
-        const episode = params.get("episode") || "1";
-        const iframe = document.querySelector("#player-container iframe");
-        if (iframe) iframe.src = tvEmbedSrc(id, season, episode);
-      } else if (PAGE === "theater") {
-        const iframe = document.getElementById("theater-player");
-        const type = params.get("type") || "";
-        const season = params.get("season") || "1";
-        const episode = params.get("episode") || "1";
-        if (iframe) {
-          if (type === "tv") iframe.src = tvEmbedSrc(id, season, episode);
-          else iframe.src = movieEmbedSrc(id);
-        }
-      }
+    const getServer = () => localStorage.getItem(SERVER_KEY) || "auto";
+    const applyServer = (s) => {
+      const value = SERVERS.includes(s) ? s : "auto";
+      localStorage.setItem(SERVER_KEY, value);
+      if (serverBtn) serverBtn.textContent = `Server: ${serverLabel(value)}`;
+      window.__slwu.server = value;
     };
+    applyServer(getServer());
 
     const openSearchSheet = (opts = {}) => {
       closeAllSheets();
       body.classList.add("sheet-open");
-      body.classList.remove("stack-open");
       renderSearchMyList();
       const input = document.getElementById("global-search-input");
       const results = document.getElementById("global-search-results");
@@ -1798,34 +1781,26 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     document.querySelectorAll("[data-close-modal='profile']").forEach(btn => btn.onclick = () => modal.classList.remove("open"));
     if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
-    document.querySelectorAll("[data-close-modal='server']").forEach(btn => btn.onclick = () => serverModal?.classList.remove("open"));
-    if (serverModal) serverModal.addEventListener("click", (e) => { if (e.target === serverModal) serverModal.classList.remove("open"); });
-    serverModal?.querySelectorAll("[data-server-mode]").forEach(btn => btn.onclick = () => {
-      setServerMode(btn.dataset.serverMode);
-      applyServerLabel();
-      serverModal.classList.remove("open");
-      refreshCurrentEmbeds();
-    });
 
     if (theater) theater.onclick = () => {
       const now = getNowPlaying();
       const target = new URL(appHref("theater/"));
       if (now && now.src) target.searchParams.set("src", now.src);
-      location.href = target.toString();
+      spaNavigate(target.toString());
     };
     if (homeBtn) homeBtn.onclick = () => {
       closeAllSheets();
       body.classList.remove("stack-open", "remote-open");
-      location.href = homeRoute();
-    };
-    if (topNavBtn) topNavBtn.onclick = () => {
-      body.classList.toggle("nav-collapsed");
-      body.classList.remove("stack-open");
-      applyTopNavLabel();
+      body.classList.remove("more-open");
+      spaNavigate(homeRoute());
     };
     if (layoutBtn) layoutBtn.onclick = () => toggleLayout();
+    if (navToggleBtn) navToggleBtn.onclick = () => applyNavCollapsed(!body.classList.contains("nav-collapsed"));
     if (serverBtn) serverBtn.onclick = () => {
-      serverModal?.classList.add("open");
+      const current = getServer();
+      const idx = SERVERS.indexOf(current);
+      const next = SERVERS[(idx + 1) % SERVERS.length];
+      applyServer(next);
     };
     if (myListBtn) myListBtn.onclick = () => {
       openSearchSheet({ prefill: "" });
@@ -1838,6 +1813,10 @@ document.addEventListener("DOMContentLoaded", () => {
       renderHiddenList();
     };
     if (menuToggle) menuToggle.onclick = () => body.classList.toggle("stack-open");
+    if (menuToggle) menuToggle.addEventListener("click", () => {
+      if (!body.classList.contains("stack-open")) body.classList.remove("more-open");
+    });
+    if (moreBtn) moreBtn.onclick = () => body.classList.toggle("more-open");
     if (appFsBtn) appFsBtn.onclick = () => toggleAppFullscreen();
     const setUiScale = (n) => {
       body.classList.remove("ui-scale-1x","ui-scale-2x","ui-scale-3x");
@@ -1856,7 +1835,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (catalogBtn) catalogBtn.onclick = () => {
       closeAllSheets();
       body.classList.add("catalog-open");
-      body.classList.remove("stack-open");
       renderGlobalCatalog();
     };
     if (searchFab) searchFab.onclick = () => openSearchSheet();
@@ -1883,8 +1861,42 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target === catalogSheet) closeAllSheets();
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeAllSheets();
+      if (e.key !== "Escape") return;
+      closeAllSheets();
+      body.classList.remove("remote-open", "more-open");
     });
+
+    // Mobile-friendly close: tap outside the remote panel to dismiss it.
+    const remotePanel = document.getElementById("tv-remote-panel");
+    const actionStack = document.getElementById("global-action-stack");
+    document.addEventListener("pointerdown", (e) => {
+      if (!body.classList.contains("remote-open")) return;
+      const target = e.target;
+      if (remotePanel && remotePanel.contains(target)) return;
+      if (actionStack && actionStack.contains(target)) return;
+      body.classList.remove("remote-open");
+    });
+
+    // Fade the stack when idle (keeps it discoverable but less distracting).
+    const STACK_FADE_MS = 10000;
+    let fadeTimer = null;
+    const resetFade = () => {
+      if (body.classList.contains("stack-open")) {
+        body.classList.remove("stack-faded");
+        if (fadeTimer) clearTimeout(fadeTimer);
+        fadeTimer = null;
+        return;
+      }
+      body.classList.remove("stack-faded");
+      if (fadeTimer) clearTimeout(fadeTimer);
+      fadeTimer = setTimeout(() => {
+        if (!body.classList.contains("stack-open")) body.classList.add("stack-faded");
+      }, STACK_FADE_MS);
+    };
+    ["mousemove", "touchstart", "pointerdown", "keydown", "scroll"].forEach((evt) => {
+      window.addEventListener(evt, resetFade, { passive: true });
+    });
+    resetFade();
   }
 
   function renderRemoteCards(items, container, opts = {}) {
@@ -1913,7 +1925,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       card.addEventListener("click", (e) => {
         if (e.target.closest(".tvremote-card-wish")) return;
-        location.href = href;
+        spaNavigate(href);
       });
       const wishBtn = card.querySelector(".tvremote-card-wish");
       if (wishBtn) wishBtn.onclick = (e) => {
@@ -2050,7 +2062,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="global-search-list-label">${esc(title)}</span>
       `;
       btn.onclick = () => {
-        location.href = item.type === "tv" ? tvRoute(item.id) : movieRoute(item.id);
+        spaNavigate(item.type === "tv" ? tvRoute(item.id) : movieRoute(item.id));
       };
       box.appendChild(btn);
     });
@@ -2062,31 +2074,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const items = HiddenList.get();
     box.innerHTML = items.length ? "" : '<div class="tvremote-empty">Nothing hidden yet.</div>';
     items.slice(0, 40).forEach(item => {
+      const btn = document.createElement("button");
+      btn.className = "global-search-list-item";
       const title = item.title || item.name || "Hidden Item";
-      const poster = item.poster ? `${IMG_W500}${item.poster}` : posterUrl(item.poster_path || item.poster) || "";
-      const card = document.createElement("article");
-      card.className = "tvremote-card tvremote-card--restore";
-      card.innerHTML = `
-        <button class="tvremote-card-wish in-list" aria-label="Restore">↩</button>
-        ${poster ? `<img src="${esc(poster)}" alt="${esc(title)}" loading="lazy">` : `<div class="tvremote-card-fallback">${esc(title.slice(0,1))}</div>`}
-        <div class="tvremote-card-info">
-          <div class="tvremote-card-title">${esc(title)}</div>
-          <div class="tvremote-card-meta">RESTORE</div>
-        </div>
-      `;
-      const restore = () => {
-        HiddenList.remove(item.id, item.type);
-        renderHiddenList();
-      };
-      card.onclick = (e) => {
-        if (e.target.closest(".tvremote-card-wish")) return;
-        restore();
-      };
-      card.querySelector(".tvremote-card-wish").onclick = (e) => {
-        e.stopPropagation();
-        restore();
-      };
-      box.appendChild(card);
+      const poster = item.poster ? `${IMG_W500}${item.poster}` : posterUrl(item.poster_path || item.poster);
+      btn.innerHTML = `${poster ? `<img src="${esc(poster)}" alt="${esc(title)}" loading="lazy">` : `<span class="global-search-list-thumb-fallback">${esc(title.slice(0,1))}</span>`}<span class="global-search-list-label">${esc(title)}</span>`;
+      btn.onclick = () => { HiddenList.remove(item.id, item.type); renderHiddenList(); };
+      box.appendChild(btn);
     });
   }
 
@@ -2167,7 +2161,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector('[data-remote-tab="search"]')?.classList.add("active");
         document.getElementById("tvremote-tab-search")?.classList.add("active");
         if (btn.dataset.remoteMode === "home") {
-          location.href = homeRoute();
+          spaNavigate(homeRoute());
           return;
         }
         remoteSearchFilter = btn.dataset.remoteMode;
@@ -2212,12 +2206,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (PAGE !== "tv") return say("Prev Episode works on TV pages.");
       const p = currentEpisodeParams();
       const nextEpisode = Math.max(1, p.episode - 1);
-      location.href = tvRoute(p.id, { season: p.season, episode: nextEpisode });
+      spaNavigate(tvRoute(p.id, { season: p.season, episode: nextEpisode }));
     };
     document.getElementById("tvremote-next-episode").onclick = () => {
       if (PAGE !== "tv") return say("Next Episode works on TV pages.");
       const p = currentEpisodeParams();
-      location.href = tvRoute(p.id, { season: p.season, episode: p.episode + 1 });
+      spaNavigate(tvRoute(p.id, { season: p.season, episode: p.episode + 1 }));
     };
     const setRemoteScale = (n) => {
       document.body.classList.remove("remote-scale-1x","remote-scale-2x","remote-scale-3x");
@@ -2363,14 +2357,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const { name, pin } = getCreds();
         if (!name || !pin) return alert("Enter name and pin.");
         if (!loginProfile(name, pin)) return alert("Wrong name or pin.");
-        location.href = appUrl(`profile/?name=${encodeURIComponent(name)}`);
+        spaNavigate(appUrl(`profile/?name=${encodeURIComponent(name)}`));
       };
       document.getElementById("profile-signup").onclick = () => {
         const name = document.getElementById("profile-name").value.trim();
         const pin = document.getElementById("profile-pin").value.trim();
         if (!name || !pin) return alert("Enter name and pin.");
         const found = upsertProfile(name, pin);
-        location.href = appUrl(`profile/?name=${encodeURIComponent(found.name)}`);
+        spaNavigate(appUrl(`profile/?name=${encodeURIComponent(found.name)}`));
       };
       app.querySelectorAll("[data-delete]").forEach(btn => btn.onclick = () => {
         deleteProfile(btn.dataset.delete);
@@ -2409,7 +2403,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (del && profile) del.onclick = () => {
         if (!confirm(`Delete ${profile.name}?`)) return;
         deleteProfile(profile.id);
-        location.href = appUrl("profile/");
+        spaNavigate(appUrl("profile/"));
       };
       const exportBtn = document.getElementById("profile-export");
       if (exportBtn) exportBtn.onclick = () => {
@@ -2452,7 +2446,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       closePinModal();
-      location.href = appUrl(`profile/?name=${encodeURIComponent(name)}`);
+      spaNavigate(appUrl(`profile/?name=${encodeURIComponent(name)}`));
     };
     if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) closePinModal(); });
   }
@@ -2469,9 +2463,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <aside class="theater-side open" id="theater-side">
           <div class="theater-side-toprow">
             <button class="remote-mini-btn theater-side-toggle" id="theater-side-toggle" aria-label="Toggle Sidebar">☰</button>
-            <button class="remote-mini-btn" id="theater-tv-btn">TV</button>
-            <a href="${homeRoute()}" class="remote-mini-btn">Home</a>
-            <a href="${appUrl('profile/')}" class="remote-mini-btn">Profile</a>
           </div>
           <div class="sheet-title">My List</div>
           <div id="theater-mylist" class="theater-mylist"></div>
@@ -2505,7 +2496,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const poster = item.poster ? posterUrl(item.poster) : "";
         btn.innerHTML = `${poster ? `<img src="${esc(poster)}" alt="${esc(item.title)}" loading="lazy">` : `<span class="global-search-list-thumb-fallback">${esc((item.title||"?").slice(0,1))}</span>`}<span class="global-search-list-label">${esc(item.title)}</span>`;
         btn.onclick = () => {
-          const embedSrc = item.type === "tv" ? tvEmbedSrc(item.id, 1, 1) : movieEmbedSrc(item.id);
+          const embedSrc = item.type === "tv" ? VIDKING_TV(item.id, 1, 1) : VIDKING_MOVIE(item.id);
           iframe.src = embedSrc;
           setNowPlaying({ src: embedSrc, title: item.title, type: item.type, id: item.id });
         };
@@ -2520,8 +2511,6 @@ document.addEventListener("DOMContentLoaded", () => {
       layout.classList.toggle("side-collapsed", !side.classList.contains("open"));
       requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     };
-    const tvLocalBtn = document.getElementById("theater-tv-btn");
-    if (tvLocalBtn) tvLocalBtn.onclick = () => document.body.classList.toggle("remote-open");
     const iframe = document.getElementById("theater-player");
 
     const applyRemote = (data) => {
@@ -2611,6 +2600,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function initEnhancements() {
     // Page-specific screens are booted explicitly via `window.__slwu.boot(...)`.
 
+    initSpaLinkInterceptor();
     ensureGlobalUI();
     initGlobalButtons();
     initGlobalSearchDock();

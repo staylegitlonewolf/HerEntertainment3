@@ -17,21 +17,20 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/HerEntertainment3/assets/index-SSRKhmLW.js"></script>
-    <link rel="stylesheet" crossorigin href="/HerEntertainment3/assets/index-BjIqJcoK.css">
+
+    <!-- GitHub Pages SPA fallback (restores deep links after 404.html redirect) -->
+    <script>
+      ;(function (l) {
+        if (l.search && l.search.startsWith('?/')) {
+          const route = l.search.slice(1).replace(/~and~/g, '&')
+          window.history.replaceState(null, '', l.pathname + route + l.hash)
+        }
+      })(window.location)
+    </script>
+    <script type="module" crossorigin src="/HerEntertainment3/assets/index-CGjvIjQS.js"></script>
+    <link rel="stylesheet" crossorigin href="/HerEntertainment3/assets/index-BUbP8LRY.css">
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Restore SPA route after GitHub Pages serves 404.html (BrowserRouter support).
-      ;(function () {
-        try {
-          var p = sessionStorage.getItem('gh_pages_path')
-          if (!p) return
-          sessionStorage.removeItem('gh_pages_path')
-          history.replaceState(null, '', p)
-        } catch (e) {}
-      })()
-    </script>
   </body>
 </html>
