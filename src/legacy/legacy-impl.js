@@ -1466,8 +1466,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navLeft) {
       const logo = navLeft.querySelector('.nav-logo');
       if (logo) logo.remove();
+      navLeft.querySelector(".nav-links")?.remove();
+      navLeft.remove();
     }
     const navRight = document.querySelector("#navbar .nav-right");
+    document.body.classList.add("top-search-only");
+    document.getElementById("hamburger")?.remove();
     document.getElementById("nav-collapse-btn")?.remove();
     if (false && navRight && !document.getElementById("nav-collapse-btn")) {
       const navCollapseBtn = document.createElement("button");
@@ -1485,6 +1489,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <button id="global-stack-toggle" class="global-fab global-fab--toggle" aria-label="Menu">☰</button>
         <div class="global-action-stack-menu">
           <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
+          <button id="global-movies-btn" class="global-fab global-fab--stack">Movies</button>
+          <button id="global-tvshows-btn" class="global-fab global-fab--stack">TV Shows</button>
           <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
           <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
           <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
@@ -1698,6 +1704,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const profileBtn = document.getElementById("profile-open-btn");
     const modal = document.getElementById("slwu-profile-modal");
     const theater = document.getElementById("global-theater-btn");
+    const moviesBtn = document.getElementById("global-movies-btn");
+    const tvShowsBtn = document.getElementById("global-tvshows-btn");
     const myListBtn = document.getElementById("global-mylist-btn");
     const hiddenBtn = document.getElementById("global-hidden-btn");
     const menuToggle = document.getElementById("global-stack-toggle");
@@ -1719,6 +1727,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeAllSheets = () => {
       body.classList.remove("sheet-open", "hidden-open", "catalog-open");
     };
+
+    const openCatalogSheet = () => {
+      closeAllSheets();
+      body.classList.add("catalog-open");
+      renderGlobalCatalog();
+    };
+    const openSearchSheetExternal = (prefill = "") => openSearchSheet({ prefill: String(prefill || "") });
+    const openMyListSheet = () => {
+      openSearchSheet({ prefill: "" });
+      const results = document.getElementById("global-search-results");
+      if (results) results.innerHTML = '<div class="tvremote-empty">Choose from My List or search.</div>';
+    };
+    window.__slwu.openCatalogSheet = openCatalogSheet;
+    window.__slwu.openSearchSheet = openSearchSheetExternal;
+    window.__slwu.openMyListSheet = openMyListSheet;
 
     const LAYOUT_KEY = "slwu_layout_mode";
     const getLayout = () => localStorage.getItem(LAYOUT_KEY) || "classic";
@@ -1792,7 +1815,18 @@ document.addEventListener("DOMContentLoaded", () => {
       closeAllSheets();
       body.classList.remove("stack-open", "remote-open");
       body.classList.remove("more-open");
+      body.classList.remove("catalog-open", "hidden-open", "sheet-open");
       spaNavigate(homeRoute());
+    };
+    if (moviesBtn) moviesBtn.onclick = () => {
+      closeAllSheets();
+      body.classList.remove("stack-open", "remote-open", "more-open");
+      spaNavigate(searchRoute({ type: "movie" }));
+    };
+    if (tvShowsBtn) tvShowsBtn.onclick = () => {
+      closeAllSheets();
+      body.classList.remove("stack-open", "remote-open", "more-open");
+      spaNavigate(searchRoute({ type: "tv" }));
     };
     if (layoutBtn) layoutBtn.onclick = () => toggleLayout();
     if (navToggleBtn) navToggleBtn.onclick = () => applyNavCollapsed(!body.classList.contains("nav-collapsed"));
@@ -1802,22 +1836,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const next = SERVERS[(idx + 1) % SERVERS.length];
       applyServer(next);
     };
-    if (myListBtn) myListBtn.onclick = () => {
-      openSearchSheet({ prefill: "" });
-      const results = document.getElementById("global-search-results");
-      if (results) results.innerHTML = '<div class="tvremote-empty">Choose from My List or search.</div>';
-    };
+    if (myListBtn) myListBtn.onclick = () => openMyListSheet();
     if (hiddenBtn) hiddenBtn.onclick = () => {
       closeAllSheets();
       body.classList.add("hidden-open");
       renderHiddenList();
     };
-    if (menuToggle) menuToggle.onclick = () => body.classList.toggle("stack-open");
-    if (menuToggle) menuToggle.addEventListener("click", () => {
-      if (!body.classList.contains("stack-open")) body.classList.remove("more-open");
-    });
+    if (menuToggle) menuToggle.onclick = () => {
+      const next = !body.classList.contains("stack-open");
+      body.classList.toggle("stack-open", next);
+      if (!next) body.classList.remove("more-open");
+      // Collapse the top search bar when the side menu closes.
+      document.body.classList.toggle("search-collapsed", !next);
+    };
     if (moreBtn) moreBtn.onclick = () => body.classList.toggle("more-open");
     if (appFsBtn) appFsBtn.onclick = () => toggleAppFullscreen();
+    document.body.classList.toggle("search-collapsed", !body.classList.contains("stack-open"));
     const setUiScale = (n) => {
       body.classList.remove("ui-scale-1x","ui-scale-2x","ui-scale-3x");
       body.classList.add(`ui-scale-${n}x`);
@@ -1832,11 +1866,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     if (tvMenuBtn) tvMenuBtn.onclick = () => body.classList.toggle("remote-open");
     if (profileMenuBtn) profileMenuBtn.onclick = () => { const qr = document.getElementById("slwu-profile-qr"); const profileUrl = appHref("profile/"); if (qr) qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(profileUrl); modal?.classList.add("open"); };
-    if (catalogBtn) catalogBtn.onclick = () => {
-      closeAllSheets();
-      body.classList.add("catalog-open");
-      renderGlobalCatalog();
-    };
+    if (catalogBtn) catalogBtn.onclick = () => openCatalogSheet();
     if (searchFab) searchFab.onclick = () => openSearchSheet();
     const searchClose = document.getElementById("global-search-close");
     if (searchClose) searchClose.onclick = () => closeAllSheets();
@@ -1925,6 +1955,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
       card.addEventListener("click", (e) => {
         if (e.target.closest(".tvremote-card-wish")) return;
+        document.body.classList.remove("remote-open");
         spaNavigate(href);
       });
       const wishBtn = card.querySelector(".tvremote-card-wish");
@@ -2161,6 +2192,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector('[data-remote-tab="search"]')?.classList.add("active");
         document.getElementById("tvremote-tab-search")?.classList.add("active");
         if (btn.dataset.remoteMode === "home") {
+          document.body.classList.remove("remote-open");
           spaNavigate(homeRoute());
           return;
         }
@@ -2626,7 +2658,9 @@ document.addEventListener("DOMContentLoaded", () => {
         case "movie":  initMoviePage(); break;
         case "tv":     initTvPage(); break;
         case "search": initSearchPage(); break;
-        case "catalog": /* bottom-sheet catalog */ break;
+        case "catalog":
+          try { window.__slwu.openCatalogSheet?.(); } catch (_) {}
+          break;
         case "profile": initProfilePage(o); break;
         case "theater": initTheaterPage(o); break;
         case "owner": initOwnerPage(o); break;
