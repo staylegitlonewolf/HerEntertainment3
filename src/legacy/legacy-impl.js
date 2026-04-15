@@ -1634,10 +1634,13 @@ document.addEventListener("DOMContentLoaded", () => {
       sheet.className = "global-search-sheet";
       sheet.innerHTML = `
         <div class="global-search-sheet-inner">
-          <div class="global-search-results-wrap">
-            <section class="global-search-main">
+          <div class="global-catalog-wrap">
+            <aside class="global-catalog-tabs">
               <div class="sheet-title">Catalog</div>
-              <div id="global-catalog-results" class="global-search-results"></div>
+              <div id="global-catalog-tabs" class="global-catalog-tabs-list"></div>
+            </aside>
+            <section class="global-catalog-main">
+              <div id="global-catalog-grid" class="global-search-results"></div>
             </section>
           </div>
           <div class="global-search-inputbar">
@@ -1881,33 +1884,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let globalCatalogActive = null;
   async function renderGlobalCatalog(selected = null) {
-    const root = document.getElementById("global-catalog-results");
-    if (!root) return;
-
-    if (!root.dataset.built) {
-      root.dataset.built = "1";
-      root.innerHTML = `
-        <div id="global-catalog-pills" class="tvremote-catalog"></div>
-        <div id="global-catalog-grid" class="global-search-results" style="margin-top:12px"></div>
-      `;
-    }
-
-    const pills = document.getElementById("global-catalog-pills");
+    const tabs = document.getElementById("global-catalog-tabs");
     const grid = document.getElementById("global-catalog-grid");
-    if (!pills || !grid) return;
+    if (!tabs || !grid) return;
 
-    pills.innerHTML = "";
+    tabs.innerHTML = "";
     const names = Object.keys(CATALOG_GENRES);
     const target = selected || globalCatalogActive || names[0];
     globalCatalogActive = target;
 
     names.forEach((name) => {
       const btn = document.createElement("button");
-      btn.className = "remote-pill remote-pill--catalog";
+      btn.className = "remote-pill remote-pill--catalog global-catalog-tab";
       btn.textContent = name;
       if (name === target) btn.classList.add("active");
       btn.onclick = () => renderGlobalCatalog(name);
-      pills.appendChild(btn);
+      tabs.appendChild(btn);
     });
 
     grid.innerHTML = '<div class="tvremote-empty">Loading…</div>';

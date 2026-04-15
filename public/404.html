@@ -7,14 +7,12 @@
   </head>
   <body>
     <script>
-      // GitHub Pages SPA fallback: redirect all unknown routes to the SPA entry.
-      // Keeps the original path+query in the hash so React Router can recover it.
+      // GitHub Pages project site fallback.
+      // Always bring the user back to the project root (no server-side routing).
       (function () {
         var loc = window.location
-        var path = loc.pathname + loc.search + loc.hash
-        loc.replace(loc.origin + loc.pathname.replace(/\/[^/]*$/, '/') + '#/' + path.replace(/^\//, ''))
+        loc.replace(loc.origin + '/HerEntertainment3/')
       })()
     </script>
   </body>
 </html>
-
