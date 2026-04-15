@@ -7,10 +7,13 @@
   </head>
   <body>
     <script>
-      // GitHub Pages project site fallback.
-      // Always bring the user back to the project root (no server-side routing).
+      // GitHub Pages SPA fallback for BrowserRouter.
+      // Store the attempted URL and redirect to the project root; index.html restores it.
       (function () {
         var loc = window.location
+        try {
+          sessionStorage.setItem('gh_pages_path', loc.pathname + loc.search + loc.hash)
+        } catch (e) {}
         loc.replace(loc.origin + '/HerEntertainment3/')
       })()
     </script>

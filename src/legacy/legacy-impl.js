@@ -12,8 +12,37 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG_W500  = "https://image.tmdb.org/t/p/w500";
 const IMG_ORIG  = "https://image.tmdb.org/t/p/original";
 
-const VIDKING_MOVIE = (id)  => `https://www.vidking.net/embed/movie/${id}?color=8B5CF6&autoPlay=false`;
-const VIDKING_TV    = (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
+const SERVER_KEY = "slwu_server_mode";
+function getServerMode() {
+  const v = localStorage.getItem(SERVER_KEY) || "vidking";
+  return ["vidking", "vidsrc"].includes(v) ? v : "vidking";
+}
+function setServerMode(mode) {
+  const m = mode === "vidsrc" ? "vidsrc" : "vidking";
+  localStorage.setItem(SERVER_KEY, m);
+}
+function movieEmbedSrc(id) {
+  const sid = String(id);
+  switch (getServerMode()) {
+    case "vidsrc":
+      return `https://vidsrc.to/embed/movie/${encodeURIComponent(sid)}`;
+    case "vidking":
+    default:
+      return `https://www.vidking.net/embed/movie/${encodeURIComponent(sid)}?color=8B5CF6&autoPlay=false`;
+  }
+}
+function tvEmbedSrc(id, season = 1, episode = 1) {
+  const sid = String(id);
+  const s = Math.max(1, parseInt(season, 10) || 1);
+  const e = Math.max(1, parseInt(episode, 10) || 1);
+  switch (getServerMode()) {
+    case "vidsrc":
+      return `https://vidsrc.to/embed/tv/${encodeURIComponent(sid)}/${s}/${e}`;
+    case "vidking":
+    default:
+      return `https://www.vidking.net/embed/tv/${encodeURIComponent(sid)}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
+  }
+}
 
 const PATH_PARTS = location.pathname.split('/').filter(Boolean);
 const SITE_ROOT = location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/';
@@ -740,7 +769,7 @@ async function initMoviePage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", VIDKING_MOVIE(id));
+        target.searchParams.set("src", movieEmbedSrc(id));
         location.href = target.toString();
       });
     }
@@ -748,7 +777,7 @@ async function initMoviePage() {
     // Player
     const playerContainer = $("#player-container");
     if (playerContainer) {
-      playerContainer.innerHTML = `<iframe src="${VIDKING_MOVIE(id)}" allow="autoplay; fullscreen"></iframe>`;
+      playerContainer.innerHTML = `<iframe src="${movieEmbedSrc(id)}" allow="autoplay; fullscreen"></iframe>`;
     }
 
     // Sidebar poster
@@ -933,7 +962,7 @@ async function initTvPage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", VIDKING_TV(id, currentSeason, currentEpisode));
+        target.searchParams.set("src", tvEmbedSrc(id, currentSeason, currentEpisode));
         location.href = target.toString();
       });
     }
@@ -942,7 +971,7 @@ async function initTvPage() {
     function loadPlayer(season, episode) {
       const pc = $("#player-container");
       if (pc) {
-        pc.innerHTML = `<iframe src="${VIDKING_TV(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
+        pc.innerHTML = `<iframe src="${tvEmbedSrc(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
       }
       // Update URL
       const url = new URL(location.href);
@@ -1448,6 +1477,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
           <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
           <button id="global-layout-btn" class="global-fab global-fab--stack">Layout</button>
+          <button id="global-server-btn" class="global-fab global-fab--stack">Server</button>
           <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
           <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
           <button id="global-scale-btn" class="global-fab global-fab--stack">1x</button>
@@ -1481,6 +1511,24 @@ document.addEventListener("DOMContentLoaded", () => {
           <img id="slwu-profile-qr" alt="Profile QR Code" />
           <div class="slwu-modal-actions">
             <a class="btn btn-primary btn-3d" href="${appUrl('profile/')}">Open Profile</a>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    if (!document.getElementById("slwu-server-modal")) {
+      const modal = document.createElement("div");
+      modal.id = "slwu-server-modal";
+      modal.className = "slwu-modal";
+      modal.innerHTML = `
+        <div class="slwu-modal-card">
+          <button class="slwu-modal-close" data-close-modal="server">×</button>
+          <h2>SERVER</h2>
+          <p class="slwu-route-note">Switch player embed source. If a provider is blocked, try the other.</p>
+          <div class="slwu-modal-actions" style="display:grid;gap:10px">
+            <button class="remote-btn" data-server-mode="vidking">Vidking (Default)</button>
+            <button class="remote-btn" data-server-mode="vidsrc">Vidsrc</button>
           </div>
         </div>
       `;
@@ -1660,6 +1708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const menuToggle = document.getElementById("global-stack-toggle");
     const homeBtn = document.getElementById("global-home-btn");
     const layoutBtn = document.getElementById("global-layout-btn");
+    const serverBtn = document.getElementById("global-server-btn");
     const appFsBtn = document.getElementById("global-appfs-btn");
     const scale = document.getElementById("global-scale-btn");
     const tvMenuBtn = document.getElementById("global-tv-btn");
@@ -1669,6 +1718,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchSheet = document.getElementById("global-search-sheet");
     const hiddenSheet = document.getElementById("global-hidden-sheet");
     const catalogSheet = document.getElementById("global-catalog-sheet");
+    const serverModal = document.getElementById("slwu-server-modal");
 
     const closeAllSheets = () => {
       body.classList.remove("sheet-open", "hidden-open", "catalog-open");
@@ -1685,6 +1735,36 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     applyLayout(getLayout());
     const toggleLayout = () => applyLayout(getLayout() === "netflix" ? "classic" : "netflix");
+
+    const applyServerLabel = () => {
+      const label = getServerMode() === "vidsrc" ? "Server: Vidsrc" : "Server: Vidking";
+      if (serverBtn) serverBtn.textContent = label;
+    };
+    applyServerLabel();
+
+    const refreshCurrentEmbeds = () => {
+      const params = new URLSearchParams(location.search);
+      const id = params.get("id");
+      if (!id) return;
+      if (PAGE === "movie") {
+        const iframe = document.querySelector("#player-container iframe");
+        if (iframe) iframe.src = movieEmbedSrc(id);
+      } else if (PAGE === "tv") {
+        const season = params.get("season") || "1";
+        const episode = params.get("episode") || "1";
+        const iframe = document.querySelector("#player-container iframe");
+        if (iframe) iframe.src = tvEmbedSrc(id, season, episode);
+      } else if (PAGE === "theater") {
+        const iframe = document.getElementById("theater-player");
+        const type = params.get("type") || "";
+        const season = params.get("season") || "1";
+        const episode = params.get("episode") || "1";
+        if (iframe) {
+          if (type === "tv") iframe.src = tvEmbedSrc(id, season, episode);
+          else iframe.src = movieEmbedSrc(id);
+        }
+      }
+    };
 
     const openSearchSheet = (opts = {}) => {
       closeAllSheets();
@@ -1710,6 +1790,14 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     document.querySelectorAll("[data-close-modal='profile']").forEach(btn => btn.onclick = () => modal.classList.remove("open"));
     if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
+    document.querySelectorAll("[data-close-modal='server']").forEach(btn => btn.onclick = () => serverModal?.classList.remove("open"));
+    if (serverModal) serverModal.addEventListener("click", (e) => { if (e.target === serverModal) serverModal.classList.remove("open"); });
+    serverModal?.querySelectorAll("[data-server-mode]").forEach(btn => btn.onclick = () => {
+      setServerMode(btn.dataset.serverMode);
+      applyServerLabel();
+      serverModal.classList.remove("open");
+      refreshCurrentEmbeds();
+    });
 
     if (theater) theater.onclick = () => {
       const now = getNowPlaying();
@@ -1723,6 +1811,9 @@ document.addEventListener("DOMContentLoaded", () => {
       location.href = homeRoute();
     };
     if (layoutBtn) layoutBtn.onclick = () => toggleLayout();
+    if (serverBtn) serverBtn.onclick = () => {
+      serverModal?.classList.add("open");
+    };
     if (myListBtn) myListBtn.onclick = () => {
       openSearchSheet({ prefill: "" });
       const results = document.getElementById("global-search-results");
@@ -2401,7 +2492,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const poster = item.poster ? posterUrl(item.poster) : "";
         btn.innerHTML = `${poster ? `<img src="${esc(poster)}" alt="${esc(item.title)}" loading="lazy">` : `<span class="global-search-list-thumb-fallback">${esc((item.title||"?").slice(0,1))}</span>`}<span class="global-search-list-label">${esc(item.title)}</span>`;
         btn.onclick = () => {
-          const embedSrc = item.type === "tv" ? VIDKING_TV(item.id, 1, 1) : VIDKING_MOVIE(item.id);
+          const embedSrc = item.type === "tv" ? tvEmbedSrc(item.id, 1, 1) : movieEmbedSrc(item.id);
           iframe.src = embedSrc;
           setNowPlaying({ src: embedSrc, title: item.title, type: item.type, id: item.id });
         };

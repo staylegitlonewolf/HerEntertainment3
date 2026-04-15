@@ -20,6 +20,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore SPA route after GitHub Pages serves 404.html (BrowserRouter support).
+      ;(function () {
+        try {
+          var p = sessionStorage.getItem('gh_pages_path')
+          if (!p) return
+          sessionStorage.removeItem('gh_pages_path')
+          history.replaceState(null, '', p)
+        } catch (e) {}
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

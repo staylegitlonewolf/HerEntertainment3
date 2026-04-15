@@ -17,10 +17,21 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/HerEntertainment3/assets/index-v_RTBhOr.js"></script>
+    <script type="module" crossorigin src="/HerEntertainment3/assets/index-B4OWb6G8.js"></script>
     <link rel="stylesheet" crossorigin href="/HerEntertainment3/assets/index-BjIqJcoK.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore SPA route after GitHub Pages serves 404.html (BrowserRouter support).
+      ;(function () {
+        try {
+          var p = sessionStorage.getItem('gh_pages_path')
+          if (!p) return
+          sessionStorage.removeItem('gh_pages_path')
+          history.replaceState(null, '', p)
+        } catch (e) {}
+      })()
+    </script>
   </body>
 </html>
