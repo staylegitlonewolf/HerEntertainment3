@@ -1517,15 +1517,6 @@ document.addEventListener("DOMContentLoaded", () => {
       stack.innerHTML = `
         <button id="global-stack-toggle" class="global-fab global-fab--toggle" aria-label="Menu">☰</button>
         <div class="global-action-stack-menu">
-          <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
-          <button id="global-movies-btn" class="global-fab global-fab--stack">Movies</button>
-          <button id="global-tvshows-btn" class="global-fab global-fab--stack">TV Shows</button>
-          <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
-          <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
-          <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
-          <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
-          <button id="global-more-btn" class="global-fab global-fab--stack">More</button>
-
           <div id="global-more-menu" class="global-more-menu">
             <button id="global-nav-toggle-btn" class="global-fab global-fab--stack">Menu</button>
             <button id="global-layout-btn" class="global-fab global-fab--stack">Layout: Classic</button>
@@ -1535,6 +1526,16 @@ document.addEventListener("DOMContentLoaded", () => {
             <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
             <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
             <button id="global-scale-btn" class="global-fab global-fab--stack">1x</button>
+          </div>
+          <div class="global-action-primary">
+            <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
+            <button id="global-movies-btn" class="global-fab global-fab--stack">Movies</button>
+            <button id="global-tvshows-btn" class="global-fab global-fab--stack">TV Shows</button>
+            <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
+            <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
+            <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
+            <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
+            <button id="global-more-btn" class="global-fab global-fab--stack">More</button>
           </div>
         </div>
       `;
@@ -2615,9 +2616,6 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
       <div class="theater-layout" id="theater-layout">
         <aside class="theater-side open" id="theater-side">
-          <div class="theater-side-toprow">
-            <button class="remote-mini-btn theater-side-toggle" id="theater-side-toggle" aria-label="Toggle Sidebar">☰</button>
-          </div>
           <div class="sheet-title">My List</div>
           <div id="theater-mylist" class="theater-mylist"></div>
         </aside>

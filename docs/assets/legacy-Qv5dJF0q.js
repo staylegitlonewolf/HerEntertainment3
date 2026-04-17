@@ -162,15 +162,6 @@ const Ft="d9f0568167a608d0700093444b0c2da7",Wt="https://api.themoviedb.org/3",le
     `,document.body.appendChild(r),requestAnimationFrame(()=>{requestAnimationFrame(()=>{r.classList.add("active")})}),setTimeout(()=>{r.classList.add("fade-out"),setTimeout(()=>{r.remove(),t()},600)},2400)})}function Yt(e,o,t){sessionStorage.setItem("pt_play_loader",JSON.stringify({backdrop:o,title:t})),St(o,t).then(()=>{U(e)})}function $t(){const e=sessionStorage.getItem("pt_play_loader");if(e){sessionStorage.removeItem("pt_play_loader");try{const{backdrop:o,title:t}=JSON.parse(e);return St(o,t)}catch{}}return Promise.resolve()}"serviceWorker"in navigator&&window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{})});document.addEventListener("DOMContentLoaded",()=>{switch(ie){case"home":Lt();break;case"movie":Et();break;case"tv":kt();break;case"search":_t();break}});(function(){const e="BroadcastChannel"in window?new BroadcastChannel("slwu_remote"):null,o="slwu_profiles",t="pt_active_profile",r="slwu_remote_state",f="slwu_now_playing",w="slwu_ui_scale_2x",u={"New Releases":"/movie/now_playing",Family:"/discover/movie?with_genres=10751",Comedy:"/discover/movie?with_genres=35",Action:"/discover/movie?with_genres=28",Horror:"/discover/movie?with_genres=27",Classics:"/discover/movie?primary_release_date.lte=1999-12-31&sort_by=popularity.desc",Cartoons:"/discover/movie?with_genres=16"};function T(){try{return JSON.parse(localStorage.getItem(o)||"[]")}catch{return[]}}function g(a){localStorage.setItem(o,JSON.stringify(a))}function h(){const a=localStorage.getItem(t);return T().find(l=>l.id===a)||null}function c(a,l=""){const s=T();let i=s.find(n=>n.name.toLowerCase()===String(a).trim().toLowerCase());return i?l&&(i.avatarPoster=String(l||"")):(i={id:"p_"+Date.now(),name:String(a).trim(),avatarPoster:String(l||""),createdAt:Date.now()},s.push(i)),g(s),localStorage.setItem(t,i.id),i}function B(a){const l=T().find(s=>s.name.toLowerCase()===String(a).trim().toLowerCase());return l&&localStorage.setItem(t,l.id),l}async function M(){try{const l=((await V("/trending/all/week")).results||[]).filter(i=>i&&i.poster_path),s=l[Math.floor(Math.random()*Math.max(l.length,1))];return(s==null?void 0:s.poster_path)||""}catch{return""}}function p(a){const l=a==null?void 0:a.avatarPoster;return l?/^https?:\/\//i.test(l)?l:te(l)||"":""}function L(a,l){const s=T(),i=s.findIndex(n=>n.id===a);i>=0&&(s[i].avatarPoster=String(l||""),g(s))}function E(a){const l=T().filter(s=>s.id!==a);g(l),localStorage.getItem(t)===a&&localStorage.removeItem(t)}function v(a,l={}){var n;if(!a||!a.src)return;const s=((n=document.querySelector("#sidebar-poster"))==null?void 0:n.src)||"",i={src:a.src,title:document.title,url:location.href,page:ie,poster:s,ts:Date.now(),...l};localStorage.setItem(f,JSON.stringify(i))}function y(){try{return JSON.parse(localStorage.getItem(f)||"null")}catch{return null}}function $(a,l={}){const s={action:a,payload:l,ts:Date.now()};localStorage.setItem(r,JSON.stringify(s)),e&&e.postMessage(s)}function R(){var a,l;return document.fullscreenElement?document.exitFullscreen().catch(()=>{}):(l=(a=document.documentElement).requestFullscreen)==null?void 0:l.call(a).catch(()=>{})}function A(){return document.querySelector("#player-container iframe, #theater-player")}function j(a,l=[]){const s=A();if(!s||!s.contentWindow)return!1;try{return s.contentWindow.postMessage(JSON.stringify({event:"command",func:a,args:l}),"*"),!0}catch{return!1}}function Y(){var l,s,i;document.querySelectorAll(".footer, .ad-container-native, .ad-container-banner, .ad-toggle-wrap").forEach(n=>n.remove());const a=document.querySelector("#navbar .nav-left");if(a){const n=a.querySelector(".nav-logo");n&&n.remove(),(l=a.querySelector(".nav-links"))==null||l.remove(),a.remove()}if(document.querySelector("#navbar .nav-right"),document.body.classList.add("top-search-only"),(s=document.getElementById("hamburger"))==null||s.remove(),(i=document.getElementById("nav-collapse-btn"))==null||i.remove(),!document.getElementById("global-action-stack")){const n=document.createElement("div");n.id="global-action-stack",n.className="global-action-stack",n.innerHTML=`
         <button id="global-stack-toggle" class="global-fab global-fab--toggle" aria-label="Menu">☰</button>
         <div class="global-action-stack-menu">
-          <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
-          <button id="global-movies-btn" class="global-fab global-fab--stack">Movies</button>
-          <button id="global-tvshows-btn" class="global-fab global-fab--stack">TV Shows</button>
-          <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
-          <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
-          <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
-          <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
-          <button id="global-more-btn" class="global-fab global-fab--stack">More</button>
-
           <div id="global-more-menu" class="global-more-menu">
             <button id="global-nav-toggle-btn" class="global-fab global-fab--stack">Menu</button>
             <button id="global-layout-btn" class="global-fab global-fab--stack">Layout: Classic</button>
@@ -180,6 +171,16 @@ const Ft="d9f0568167a608d0700093444b0c2da7",Wt="https://api.themoviedb.org/3",le
             <button id="global-appfs-btn" class="global-fab global-fab--stack">Full</button>
             <button id="global-tv-btn" class="global-fab global-fab--stack">TV</button>
             <button id="global-scale-btn" class="global-fab global-fab--stack">1x</button>
+          </div>
+          <div class="global-action-primary">
+            <button id="global-home-btn" class="global-fab global-fab--stack" aria-label="Home">Home</button>
+            <button id="global-movies-btn" class="global-fab global-fab--stack">Movies</button>
+            <button id="global-tvshows-btn" class="global-fab global-fab--stack">TV Shows</button>
+            <button id="global-search-btn" class="global-fab global-fab--stack global-fab--search" aria-label="Search">Search</button>
+            <button id="global-mylist-btn" class="global-fab global-fab--stack">My List</button>
+            <button id="global-catalog-btn" class="global-fab global-fab--stack">Catalog</button>
+            <button id="global-theater-btn" class="global-fab global-fab--stack">Theater</button>
+            <button id="global-more-btn" class="global-fab global-fab--stack">More</button>
           </div>
         </div>
       `,document.body.appendChild(n)}if(!document.getElementById("slwu-brand-pin")){const n=document.createElement("div");n.id="slwu-brand-pin",n.textContent="SheLivesWithMe",document.body.appendChild(n)}if(!document.getElementById("slwu-profile-modal")){const n=document.createElement("div");n.id="slwu-profile-modal",n.className="slwu-modal",n.innerHTML=`
@@ -407,9 +408,6 @@ const Ft="d9f0568167a608d0700093444b0c2da7",Wt="https://api.themoviedb.org/3",le
       </div>
       <div class="theater-layout" id="theater-layout">
         <aside class="theater-side open" id="theater-side">
-          <div class="theater-side-toprow">
-            <button class="remote-mini-btn theater-side-toggle" id="theater-side-toggle" aria-label="Toggle Sidebar">☰</button>
-          </div>
           <div class="sheet-title">My List</div>
           <div id="theater-mylist" class="theater-mylist"></div>
         </aside>
