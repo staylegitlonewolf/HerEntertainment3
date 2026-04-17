@@ -1,0 +1,13 @@
+{
+  "id": "com.staylegitlonewolf.sheliveswithme",
+  "version": "0.0.1",
+  "vendor": "staylegitlonewolf",
+  "type": "web",
+  "main": "index.html",
+  "title": "SheLivesWithMe",
+  "icon": "icon.png",
+  "largeIcon": "icon.png",
+  "bgColor": "#000000",
+  "appDescription": "Personal install build for LG webOS TV."
+}
+
