@@ -1405,23 +1405,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const id = localStorage.getItem(ACTIVE_PROFILE_KEY);
     return getProfiles().find(p => p.id === id) || null;
   }
-  function upsertProfile(name, pin) {
+  function upsertProfile(name, avatarPoster = "") {
     const profiles = getProfiles();
     let profile = profiles.find(p => p.name.toLowerCase() === String(name).trim().toLowerCase());
     if (!profile) {
-      profile = { id: "p_" + Date.now(), name: String(name).trim(), pin: String(pin).trim(), createdAt: Date.now() };
+      profile = {
+        id: "p_" + Date.now(),
+        name: String(name).trim(),
+        avatarPoster: String(avatarPoster || ""),
+        createdAt: Date.now()
+      };
       profiles.push(profile);
-    } else {
-      profile.pin = String(pin).trim();
+    } else if (avatarPoster) {
+      profile.avatarPoster = String(avatarPoster || "");
     }
     saveProfiles(profiles);
     localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
     return profile;
   }
-  function loginProfile(name, pin) {
-    const profile = getProfiles().find(p => p.name.toLowerCase() === String(name).trim().toLowerCase() && String(p.pin) === String(pin).trim());
+  function loginProfile(name) {
+    const profile = getProfiles().find(p => p.name.toLowerCase() === String(name).trim().toLowerCase());
     if (profile) localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
     return profile;
+  }
+  async function pickRandomPosterPath() {
+    try {
+      const data = await tmdb("/trending/all/week");
+      const pool = (data.results || []).filter(x => x && x.poster_path);
+      const pick = pool[Math.floor(Math.random() * Math.max(pool.length, 1))];
+      return pick?.poster_path || "";
+    } catch (_) {
+      return "";
+    }
+  }
+  function getProfileAvatarUrl(profile) {
+    const p = profile?.avatarPoster;
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    return posterUrl(p) || "";
+  }
+  function setProfileAvatar(profileId, avatarPoster) {
+    const profiles = getProfiles();
+    const idx = profiles.findIndex(p => p.id === profileId);
+    if (idx >= 0) {
+      profiles[idx].avatarPoster = String(avatarPoster || "");
+      saveProfiles(profiles);
+    }
   }
   function deleteProfile(id) {
     const items = getProfiles().filter(p => p.id !== id);
@@ -1450,7 +1479,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return document.querySelector("#player-container iframe, #theater-player");
   }
   function tryControlIframe(command, args = []) {
-    const iframe = getCurrentPageIframe() || document.querySelector("#tvremote-mini-player iframe");
+    const iframe = getCurrentPageIframe();
     if (!iframe || !iframe.contentWindow) return false;
     try {
       iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: command, args }), "*");
@@ -1526,14 +1555,35 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="slwu-modal-card">
           <button class="slwu-modal-close" data-close-modal="profile">×</button>
           <h2>PROFILE</h2>
-          <p>Scan to open the local profile page.</p>
-          <img id="slwu-profile-qr" alt="Profile QR Code" />
-          <div class="slwu-modal-actions">
-            <a class="btn btn-primary btn-3d" href="${appUrl('profile/')}">Open Profile</a>
+          <p>Local profiles only. Pick a name + optional avatar.</p>
+          <div class="profile-modal-row">
+            <div class="profile-modal-avatar" id="slwu-profile-avatar-preview"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+              <div class="auth-field">
+                <input type="text" id="slwu-profile-name" placeholder=" " />
+                <label for="slwu-profile-name">Name</label>
+                <div class="auth-field-border"></div>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+                <button id="slwu-profile-random" class="remote-mini-btn" type="button">Random Photo</button>
+                <button id="slwu-profile-enter" class="remote-mini-btn remote-mini-btn--primary" type="button">Create / Enter</button>
+              </div>
+            </div>
           </div>
+          <div class="sheet-title" style="margin-top:14px">Existing Profiles</div>
+          <div id="slwu-profile-list" class="profile-existing"></div>
         </div>
       `;
       document.body.appendChild(modal);
+    }
+
+    if (!document.getElementById("slwu-avatar-pin")) {
+      const pin = document.createElement("button");
+      pin.id = "slwu-avatar-pin";
+      pin.type = "button";
+      pin.className = "slwu-avatar-pin";
+      pin.innerHTML = `<span class="slwu-avatar-fallback">S</span>`;
+      document.body.appendChild(pin);
     }
 
     if (!document.getElementById("tv-remote-panel")) {
@@ -1544,7 +1594,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="tv-remote-header">
           <div class="tv-remote-header-actions tv-remote-header-actions--split">
             <div class="tv-remote-header-actions">
-              <button id="tvremote-nowplaying-toggle" class="remote-mini-btn remote-mini-btn--primary">Now Playing</button>
               <button id="tvremote-more-header" class="remote-mini-btn">Load More</button>
               <button id="tvremote-random-header" class="remote-mini-btn">Random</button>
             </div>
@@ -1557,10 +1606,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
 
         <div class="tvremote-section">
-          <div id="tvremote-mini-player" class="tvremote-mini-player" hidden>
-            <iframe title="Now Playing Preview" allow="autoplay; fullscreen"></iframe>
-          </div>
-          <div id="tvremote-nowplaying-meta" class="tvremote-nowplaying-meta"></div>
+          <div id="tvremote-nowplaying-meta" class="tvremote-nowplaying-meta" hidden></div>
         </div>
 
         <div class="tvremote-section tvremote-sticky-search">
@@ -1629,6 +1675,13 @@ document.addEventListener("DOMContentLoaded", () => {
       sheet.className = "global-search-sheet";
       sheet.innerHTML = `
         <div class="global-search-sheet-inner">
+          <div class="global-search-inputbar">
+            <div class="global-search-inputwrap">
+              <input id="global-search-input" type="text" placeholder="Search anything..." />
+              <button id="global-search-clear" class="remote-mini-btn" type="button">Clear</button>
+            </div>
+            <button id="global-search-close" class="remote-mini-btn">Close</button>
+          </div>
           <div class="global-search-results-wrap">
             <aside class="global-search-side">
               <div class="sheet-title">My List</div>
@@ -1637,13 +1690,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <section class="global-search-main">
               <div id="global-search-results" class="global-search-results"></div>
             </section>
-          </div>
-          <div class="global-search-inputbar">
-            <div class="global-search-inputwrap">
-              <input id="global-search-input" type="text" placeholder="Search anything..." />
-              <button id="global-search-clear" class="remote-mini-btn" type="button">Clear</button>
-            </div>
-            <button id="global-search-close" class="remote-mini-btn">Close</button>
           </div>
         </div>
       `;
@@ -1676,6 +1722,11 @@ document.addEventListener("DOMContentLoaded", () => {
       sheet.className = "global-search-sheet";
       sheet.innerHTML = `
         <div class="global-search-sheet-inner">
+          <div class="global-search-inputbar">
+            <button id="global-catalog-more" class="remote-mini-btn" type="button">Load More</button>
+            <div></div>
+            <button id="global-catalog-close" class="remote-mini-btn">Close</button>
+          </div>
           <div class="global-catalog-wrap">
             <aside class="global-catalog-tabs">
               <div class="sheet-title">Catalog</div>
@@ -1684,10 +1735,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <section class="global-catalog-main">
               <div id="global-catalog-grid" class="global-search-results"></div>
             </section>
-          </div>
-          <div class="global-search-inputbar">
-            <div></div>
-            <button id="global-catalog-close" class="remote-mini-btn">Close</button>
           </div>
         </div>
       `;
@@ -1703,6 +1750,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById("tvremote-close");
     const profileBtn = document.getElementById("profile-open-btn");
     const modal = document.getElementById("slwu-profile-modal");
+    const avatarPin = document.getElementById("slwu-avatar-pin");
     const theater = document.getElementById("global-theater-btn");
     const moviesBtn = document.getElementById("global-movies-btn");
     const tvShowsBtn = document.getElementById("global-tvshows-btn");
@@ -1765,11 +1813,13 @@ document.addEventListener("DOMContentLoaded", () => {
     applyNavCollapsed(localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
 
     const SERVER_KEY = "slwu_server_mode";
-    const SERVERS = ["auto", "oxygen", "hydrogen", "lithium"];
+    const SERVERS = ["auto", "oxygen", "helium", "hydrogen", "lithium", "titanium"];
     const serverLabel = (s) => {
       if (s === "oxygen") return "Oxygen";
+      if (s === "helium") return "Helium";
       if (s === "hydrogen") return "Hydrogen";
       if (s === "lithium") return "Lithium";
+      if (s === "titanium") return "Titanium";
       return "Auto";
     };
     const getServer = () => localStorage.getItem(SERVER_KEY) || "auto";
@@ -1796,14 +1846,112 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
         if (closeBtn) closeBtn.onclick = () => body.classList.remove("remote-open");
-    if (profileBtn) profileBtn.onclick = () => {
-      const qr = document.getElementById("slwu-profile-qr");
-      const profileUrl = appHref("profile/");
-      if (qr) qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(profileUrl);
-      modal.classList.add("open");
+
+    const renderProfilePin = () => {
+      if (!avatarPin) return;
+      const active = getActiveProfile();
+      const url = getProfileAvatarUrl(active);
+      if (url) {
+        avatarPin.innerHTML = `<img src="${esc(url)}" alt="Profile" />`;
+      } else {
+        const initial = (active?.name || "S").slice(0, 1).toUpperCase();
+        avatarPin.innerHTML = `<span class="slwu-avatar-fallback">${esc(initial)}</span>`;
+      }
     };
+
+    const renderProfileModal = () => {
+      if (!modal) return;
+      const list = document.getElementById("slwu-profile-list");
+      const nameInput = document.getElementById("slwu-profile-name");
+      const preview = document.getElementById("slwu-profile-avatar-preview");
+      const active = getActiveProfile();
+      const profiles = getProfiles();
+
+      const setPreviewPoster = (posterPath) => {
+        const url = posterPath ? getProfileAvatarUrl({ avatarPoster: posterPath }) : "";
+        modal.dataset.avatarPoster = posterPath || "";
+        if (!preview) return;
+        preview.innerHTML = url ? `<img src="${esc(url)}" alt="Avatar" />` : `<span class="slwu-avatar-fallback">?</span>`;
+      };
+
+      if (nameInput && active?.name) nameInput.value = active.name;
+      setPreviewPoster(active?.avatarPoster || "");
+
+      if (list) {
+        list.innerHTML = profiles.length
+          ? profiles
+              .map(
+                (p) => `
+          <div class="profile-local-card">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="profile-modal-avatar" style="width:44px;height:64px;border-radius:12px">
+                ${
+                  getProfileAvatarUrl(p)
+                    ? `<img src="${esc(getProfileAvatarUrl(p))}" alt="${esc(p.name)}" />`
+                    : `<span class="slwu-avatar-fallback">${esc(p.name.slice(0, 1).toUpperCase())}</span>`
+                }
+              </div>
+              <div>
+                <div class="profile-local-name">${esc(p.name)}</div>
+                <div class="profile-local-meta">Local profile</div>
+              </div>
+            </div>
+            <div class="profile-local-actions">
+              <button class="remote-mini-btn" data-login="${esc(p.name)}">Enter</button>
+              <button class="remote-mini-btn" data-delete="${esc(p.id)}">Delete</button>
+            </div>
+          </div>
+        `,
+              )
+              .join("")
+          : '<div class="tvremote-empty">No profiles yet.</div>';
+
+        list.querySelectorAll("[data-delete]").forEach((btn) => {
+          btn.onclick = () => {
+            deleteProfile(btn.dataset.delete);
+            renderProfileModal();
+            renderProfilePin();
+          };
+        });
+        list.querySelectorAll("[data-login]").forEach((btn) => {
+          btn.onclick = () => {
+            loginProfile(btn.dataset.login);
+            renderProfileModal();
+            renderProfilePin();
+            renderSearchMyList();
+          };
+        });
+      }
+
+      const randomBtn = document.getElementById("slwu-profile-random");
+      if (randomBtn) randomBtn.onclick = async () => setPreviewPoster(await pickRandomPosterPath());
+
+      const enterBtn = document.getElementById("slwu-profile-enter");
+      if (enterBtn) {
+        enterBtn.onclick = async () => {
+          const name = String(nameInput?.value || "").trim();
+          if (!name) return;
+          let poster = modal.dataset.avatarPoster || "";
+          if (!poster) poster = await pickRandomPosterPath();
+          const existing = getProfiles().find((p) => p.name.toLowerCase() === name.toLowerCase());
+          const p = upsertProfile(name, poster);
+          if (existing && poster) setProfileAvatar(p.id, poster);
+          renderProfilePin();
+          renderSearchMyList();
+          modal.classList.remove("open");
+        };
+      }
+    };
+
+    const openProfileModal = () => {
+      renderProfileModal();
+      modal?.classList.add("open");
+    };
+    if (profileBtn) profileBtn.onclick = openProfileModal;
+    if (avatarPin) avatarPin.onclick = openProfileModal;
     document.querySelectorAll("[data-close-modal='profile']").forEach(btn => btn.onclick = () => modal.classList.remove("open"));
     if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
+    renderProfilePin();
 
     if (theater) theater.onclick = () => {
       const now = getNowPlaying();
@@ -1865,7 +2013,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setUiScale(current === 3 ? 1 : current + 1);
     };
     if (tvMenuBtn) tvMenuBtn.onclick = () => body.classList.toggle("remote-open");
-    if (profileMenuBtn) profileMenuBtn.onclick = () => { const qr = document.getElementById("slwu-profile-qr"); const profileUrl = appHref("profile/"); if (qr) qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(profileUrl); modal?.classList.add("open"); };
+    if (profileMenuBtn) profileMenuBtn.onclick = () => openProfileModal();
     if (catalogBtn) catalogBtn.onclick = () => openCatalogSheet();
     if (searchFab) searchFab.onclick = () => openSearchSheet();
     const searchClose = document.getElementById("global-search-close");
@@ -1881,6 +2029,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hiddenClose) hiddenClose.onclick = () => closeAllSheets();
     const catalogClose = document.getElementById("global-catalog-close");
     if (catalogClose) catalogClose.onclick = () => closeAllSheets();
+    const catalogMore = document.getElementById("global-catalog-more");
+    if (catalogMore) catalogMore.onclick = () => {
+      try { renderGlobalCatalog(globalCatalogActive, { append: true }); } catch (_) {}
+    };
     if (searchSheet) searchSheet.addEventListener("click", (e) => {
       if (e.target === searchSheet) closeAllSheets();
     });
@@ -1973,6 +2125,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let remoteSearchPage = 1;
   let remoteSearchFilter = "all";
   let remoteSearchTerm = "";
+
+  let remoteCatalogActive = null;
+  let remoteCatalogPage = 1;
+  async function doRemoteCatalogLoad(genre, reset = true) {
+    const results = document.getElementById("tvremote-catalog-results");
+    if (!results) return;
+    const g = genre || remoteCatalogActive || Object.keys(CATALOG_GENRES)[0];
+    remoteCatalogActive = g;
+    if (reset) {
+      remoteCatalogPage = 1;
+      results.innerHTML = '<div class="tvremote-empty">Loadingâ€¦</div>';
+    }
+    const base = String(CATALOG_GENRES[g]);
+    const path = `${base}${base.includes("?") ? "&" : "?"}page=${remoteCatalogPage}`;
+    const data = await tmdb(path);
+    const items = (data.results || []).slice(0, 12);
+    renderRemoteCards(items, results, { append: !reset });
+    remoteCatalogPage += 1;
+  }
   async function doRemoteSearch(reset = true) {
     const input = document.getElementById("tvremote-search");
     const results = document.getElementById("tvremote-results");
@@ -2014,15 +2185,15 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.onclick = async () => {
         wrap.querySelectorAll(".remote-pill").forEach(x => x.classList.remove("active"));
         btn.classList.add("active");
-        const data = await tmdb(CATALOG_GENRES[name]);
-        renderRemoteCards((data.results || []).slice(0, 12), document.getElementById("tvremote-catalog-results"));
+        await doRemoteCatalogLoad(name, true).catch(console.error);
       };
       wrap.appendChild(btn);
     });
   }
 
   let globalCatalogActive = null;
-  async function renderGlobalCatalog(selected = null) {
+  let globalCatalogPage = 1;
+  async function renderGlobalCatalog(selected = null, opts = {}) {
     const tabs = document.getElementById("global-catalog-tabs");
     const grid = document.getElementById("global-catalog-grid");
     if (!tabs || !grid) return;
@@ -2031,21 +2202,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const names = Object.keys(CATALOG_GENRES);
     const target = selected || globalCatalogActive || names[0];
     globalCatalogActive = target;
+    const append = !!opts.append;
+    if (!append) globalCatalogPage = 1;
+    const prevHTML = append ? grid.innerHTML : "";
 
     names.forEach((name) => {
       const btn = document.createElement("button");
       btn.className = "remote-pill remote-pill--catalog global-catalog-tab";
       btn.textContent = name;
       if (name === target) btn.classList.add("active");
-      btn.onclick = () => renderGlobalCatalog(name);
+      btn.onclick = () => renderGlobalCatalog(name, { append: false });
       tabs.appendChild(btn);
     });
 
     grid.innerHTML = '<div class="tvremote-empty">Loading…</div>';
+    if (append) grid.innerHTML = prevHTML;
     try {
-      const data = await tmdb(CATALOG_GENRES[target]);
+      const base = String(CATALOG_GENRES[target]);
+      const path = `${base}${base.includes("?") ? "&" : "?"}page=${globalCatalogPage}`;
+      const data = await tmdb(path);
       const items = (data.results || []).slice(0, 24);
-      renderRemoteCards(items, grid);
+      renderRemoteCards(items, grid, { append });
+      globalCatalogPage += 1;
     } catch (_) {
       grid.innerHTML = '<div class="tvremote-empty">Could not load catalog.</div>';
     }
@@ -2066,16 +2244,6 @@ document.addEventListener("DOMContentLoaded", () => {
     )).then(all => {
       renderRemoteCards(all.filter(Boolean), box);
     });
-  }
-
-  function syncMiniPlayer() {
-    const miniWrap = document.getElementById("tvremote-mini-player");
-    if (!miniWrap) return;
-    const mini = miniWrap.querySelector("iframe");
-    const live = document.querySelector("#player-container iframe");
-    const now = getNowPlaying();
-    const src = live?.src || now?.src || "";
-    if (src && mini.src !== src) mini.src = src;
   }
 
   function renderSearchMyList() {
@@ -2155,7 +2323,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window.__slwu._tvRemoteWired = true;
     renderCatalog();
     renderMyList();
-    syncMiniPlayer();
 
     // Hide fullscreen controls on devices/browsers that can't fullscreen (notably iOS Safari).
     const fsBtn = document.getElementById("tvremote-player-fullscreen");
@@ -2222,18 +2389,6 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     };
 
-    const nowBtn = document.getElementById("tvremote-nowplaying-toggle");
-    if (nowBtn) nowBtn.onclick = () => {
-      const wrap = document.getElementById("tvremote-mini-player");
-      if (!wrap.hidden) {
-        const frame = wrap.querySelector("iframe");
-        if (frame) frame.src = "about:blank";
-        wrap.hidden = true;
-      } else {
-        wrap.hidden = false;
-        syncMiniPlayer();
-      }
-    };
     document.getElementById("tvremote-prev-episode").onclick = () => {
       if (PAGE !== "tv") return say("Prev Episode works on TV pages.");
       const p = currentEpisodeParams();
@@ -2274,7 +2429,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("tvremote-volume-up").onclick = () => { pushRemoteAction("volumeUp"); say("Sent volume up."); };
     document.getElementById("tvremote-stop").onclick = () => { tryControlIframe("stopVideo"); pushRemoteAction("stop"); say("Sent stop."); };
     document.getElementById("tvremote-player-fullscreen").onclick = () => {
-      const iframe = getCurrentPageIframe() || document.querySelector("#tvremote-mini-player iframe");
+      const iframe = getCurrentPageIframe();
       if (iframe?.requestFullscreen) iframe.requestFullscreen().catch(() => {});
       pushRemoteAction("fullscreenOn");
       say("Fullscreen requested.");
@@ -2314,12 +2469,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="profile-hero">
           <div class="tv-remote-kicker">PROFILE</div>
           <h1 id="profile-page-title">Create / Enter Profile</h1>
-          <p class="profile-copy">Local profiles only. Name + pin are stored in your browser.</p>
+          <p class="profile-copy">Local profiles only. Pick a name + optional avatar.</p>
         </div>
         <div id="profile-app" class="profile-app"></div>
       </div>
     `;
     const app = root.querySelector("#profile-app");
+    if (false) {
     const pinModal = document.createElement("div");
     pinModal.id = "profile-pin-modal";
     pinModal.className = "slwu-modal";
@@ -2341,6 +2497,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
     root.appendChild(pinModal);
+    }
     const params = new URLSearchParams(location.search);
     const nameQuery = params.get("name");
     const active = getActiveProfile();
@@ -2366,14 +2523,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <label for="profile-name">Name</label>
             <div class="auth-field-border"></div>
           </div>
-          <div class="auth-field">
-            <input type="password" id="profile-pin" placeholder=" " />
-            <label for="profile-pin">Pin</label>
-            <div class="auth-field-border"></div>
-          </div>
           <div class="profile-form-actions">
-            <button id="profile-login" class="btn btn-secondary btn-3d" type="button">Login</button>
-            <button id="profile-signup" class="btn btn-primary btn-3d" type="button">Sign Up</button>
+            <button id="profile-random" class="btn btn-secondary btn-3d" type="button">Random Photo</button>
+            <button id="profile-enter" class="btn btn-primary btn-3d" type="button">Create / Enter</button>
           </div>
         </div>
         <div class="profile-existing">
@@ -2381,21 +2533,16 @@ document.addEventListener("DOMContentLoaded", () => {
           ${cards || '<div class="tvremote-empty">No profiles yet.</div>'}
         </div>
       `;
-      const getCreds = () => ({
-        name: document.getElementById("profile-name").value.trim(),
-        pin: document.getElementById("profile-pin").value.trim()
-      });
-      document.getElementById("profile-login").onclick = () => {
-        const { name, pin } = getCreds();
-        if (!name || !pin) return alert("Enter name and pin.");
-        if (!loginProfile(name, pin)) return alert("Wrong name or pin.");
-        spaNavigate(appUrl(`profile/?name=${encodeURIComponent(name)}`));
+      let pickedPoster = "";
+      document.getElementById("profile-random").onclick = async () => {
+        pickedPoster = await pickRandomPosterPath();
+        alert("Random avatar picked. Press Create / Enter to save.");
       };
-      document.getElementById("profile-signup").onclick = () => {
+      document.getElementById("profile-enter").onclick = async () => {
         const name = document.getElementById("profile-name").value.trim();
-        const pin = document.getElementById("profile-pin").value.trim();
-        if (!name || !pin) return alert("Enter name and pin.");
-        const found = upsertProfile(name, pin);
+        if (!name) return alert("Enter a name.");
+        const poster = pickedPoster || (await pickRandomPosterPath());
+        const found = upsertProfile(name, poster);
         spaNavigate(appUrl(`profile/?name=${encodeURIComponent(found.name)}`));
       };
       app.querySelectorAll("[data-delete]").forEach(btn => btn.onclick = () => {
@@ -2403,18 +2550,8 @@ document.addEventListener("DOMContentLoaded", () => {
         renderList();
       });
       app.querySelectorAll("[data-login]").forEach(btn => btn.onclick = () => {
-        const p = getProfiles().find(x => x.name === btn.dataset.login);
-        if (!p) return;
-        const modal = document.getElementById("profile-pin-modal");
-        const input = document.getElementById("profile-pin-modal-input");
-        const copy = document.getElementById("profile-pin-copy");
-        const err = document.getElementById("profile-pin-error");
-        if (copy) copy.textContent = `Enter pin for ${p.name}.`;
-        if (err) err.style.display = "none";
-        if (input) input.value = "";
-        modal.dataset.profile = p.name;
-        modal.classList.add("open");
-        setTimeout(() => input?.focus(), 20);
+        loginProfile(btn.dataset.login);
+        spaNavigate(appUrl(`profile/?name=${encodeURIComponent(btn.dataset.login)}`));
       });
     }
 
@@ -2461,26 +2598,7 @@ document.addEventListener("DOMContentLoaded", () => {
     else renderList();
 
     const modal = document.getElementById("profile-pin-modal");
-    const closePinModal = () => modal?.classList.remove("open");
-    root.querySelectorAll("[data-close-modal='pin']").forEach(btn => btn.onclick = closePinModal);
-    const cancel = document.getElementById("profile-pin-cancel");
-    if (cancel) cancel.onclick = closePinModal;
-    const confirm = document.getElementById("profile-pin-confirm");
-    if (confirm) confirm.onclick = () => {
-      if (!modal) return;
-      const name = modal.dataset.profile || "";
-      const input = document.getElementById("profile-pin-modal-input");
-      const err = document.getElementById("profile-pin-error");
-      const pin = String(input?.value || "").trim();
-      if (!name || !pin) return;
-      if (!loginProfile(name, pin)) {
-        if (err) err.style.display = "block";
-        return;
-      }
-      closePinModal();
-      spaNavigate(appUrl(`profile/?name=${encodeURIComponent(name)}`));
-    };
-    if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) closePinModal(); });
+    // PIN modal wiring removed.
   }
 
   function initTheaterPage(opts = {}) {
@@ -2491,6 +2609,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = getNowPlaying();
     const src = new URLSearchParams(location.search).get("src") || now?.src || "";
     root.innerHTML = `
+      <div class="theater-controls" id="theater-controls">
+        <button class="remote-mini-btn theater-side-toggle" id="theater-controls-toggle" aria-label="Toggle Sidebar">☰</button>
+        <button class="remote-mini-btn" id="theater-home-btn" type="button">Home</button>
+      </div>
       <div class="theater-layout" id="theater-layout">
         <aside class="theater-side open" id="theater-side">
           <div class="theater-side-toprow">
@@ -2536,13 +2658,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     };
     render();
-    document.getElementById("theater-side-toggle").onclick = () => {
+    document.getElementById("theater-controls-toggle").onclick = () => {
       const side = document.getElementById("theater-side");
       const layout = document.getElementById("theater-layout");
       side.classList.toggle("open");
       layout.classList.toggle("side-collapsed", !side.classList.contains("open"));
+      document.getElementById("theater-controls")?.classList.toggle("faded", !side.classList.contains("open"));
       requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     };
+    const controls = document.getElementById("theater-controls");
+    if (controls) controls.classList.toggle("faded", !document.getElementById("theater-side")?.classList.contains("open"));
+    const homeBtn = document.getElementById("theater-home-btn");
+    if (homeBtn) homeBtn.onclick = () => spaNavigate(homeRoute());
     const iframe = document.getElementById("theater-player");
 
     const applyRemote = (data) => {
