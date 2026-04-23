@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    SheLivesWithUs — styles.css
    Black & Purple Netflix-Style Theme
    ============================================================ */
@@ -2628,4 +2628,61 @@ body.nav-collapsed #navbar{transform:translate(-50%,-120%)}
 @media (min-width: 1200px){
   .global-search-sheet{top:180px!important}
   #navbar{top:28px}
+}
+
+/* Torrent Modal */
+.torrent-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.torrent-modal-content {
+  background: var(--bg3);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  max-width: 400px;
+  width: 90%;
+}
+
+.torrent-modal-content h2 {
+  margin-bottom: 15px;
+  color: var(--text);
+}
+
+.torrent-modal-content input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
+.torrent-modal-content button {
+  background: var(--purple);
+  color: var(--text);
+  padding: 10px 15px;
+  border-radius: var(--radius-sm);
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.torrent-modal-content #torrent-preview {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.torrent-modal-content #torrent-preview img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
 }

@@ -16,7 +16,7 @@ const VIDKING_MOVIE = (id)  => `https://www.vidking.net/embed/movie/${id}?color=
 const VIDKING_TV    = (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
 
 const PATH_PARTS = location.pathname.split('/').filter(Boolean);
-const SITE_ROOT = location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/';
+const SITE_ROOT = window.__SLWU_BASE || (location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/');
 function appUrl(rel = '') {
   return SITE_ROOT + String(rel).replace(/^\/+/, '');
 }
@@ -150,14 +150,14 @@ window.addEventListener("message", function(event) {
 //  PAGE DETECTION
 // ============================================================
 const PAGE = (() => {
-  const p = location.pathname;
-  if (p.endsWith("movie.html")) return "movie";
-  if (p.endsWith("tv.html")) return "tv";
-  if (p.endsWith("search.html")) return "search";
-  if (/profile\.html$|\/profile\/?$/.test(p)) return "profile";
-  if (/theater\.html$|\/theater\/?$/.test(p)) return "theater";
-  if (/categories\.html$|\/categories\/?$/.test(p)) return "categories";
-  if (/owner\.html$|\/owner\/?$/.test(p)) return "owner";
+  const p = location.pathname.replace(/\/$/, '');
+  if (p.endsWith("movie.html") || p.endsWith("/movie")) return "movie";
+  if (p.endsWith("tv.html") || p.endsWith("/tv")) return "tv";
+  if (p.endsWith("search.html") || p.endsWith("/search")) return "search";
+  if (p.endsWith("profile.html") || /\/profile$/.test(p)) return "profile";
+  if (p.endsWith("theater.html") || /\/theater$/.test(p)) return "theater";
+  if (p.endsWith("categories.html") || /\/categories$/.test(p) || /\/catalog$/.test(p)) return "categories";
+  if (p.endsWith("owner.html") || /\/owner$/.test(p)) return "owner";
   return "home";
 })();
 
@@ -621,6 +621,7 @@ async function initMoviePage() {
             }
           </button>
           <button class="detail-list-btn" id="watch-in-theater-btn">Watch in Theater</button>
+          <button class="detail-list-btn" id="download-btn">Download</button>
         </div>
       `;
 
@@ -642,6 +643,10 @@ async function initMoviePage() {
         const target = new URL(appHref("theater/"));
         target.searchParams.set("src", VIDKING_MOVIE(id));
         location.href = target.toString();
+      });
+      const downloadBtn = headerEl.querySelector("#download-btn");
+      if (downloadBtn) downloadBtn.addEventListener("click", () => {
+        openTorrentModal();
       });
     }
 
@@ -815,6 +820,7 @@ async function initTvPage() {
             }
           </button>
           <button class="detail-list-btn" id="watch-in-theater-btn">Watch in Theater</button>
+          <button class="detail-list-btn" id="download-btn">Download</button>
         </div>
       `;
 
@@ -835,6 +841,10 @@ async function initTvPage() {
         const target = new URL(appHref("theater/"));
         target.searchParams.set("src", VIDKING_TV(id, currentSeason, currentEpisode));
         location.href = target.toString();
+      });
+      const downloadBtn = headerEl.querySelector("#download-btn");
+      if (downloadBtn) downloadBtn.addEventListener("click", () => {
+        openTorrentModal();
       });
     }
 
@@ -2132,7 +2142,40 @@ document.addEventListener("DOMContentLoaded", () => {
         a.textContent = label;
         grid.appendChild(a);
       });
+      // Add Torrent button
+      const torrentBtn = document.createElement("button");
+      torrentBtn.className = "remote-pill remote-pill--catalog";
+      torrentBtn.textContent = "Torrent";
+      torrentBtn.addEventListener("click", () => openTorrentModal());
+      grid.appendChild(torrentBtn);
     }
+  }
+
+  function openTorrentModal() {
+    const modal = document.createElement("div");
+    modal.className = "torrent-modal";
+    modal.innerHTML = `
+      <div class="torrent-modal-content">
+        <h2>Download Torrent</h2>
+        <input type="text" id="magnet-link" placeholder="Enter magnet link" />
+        <button id="download-torrent-btn">Download</button>
+        <div id="torrent-preview"></div>
+        <button id="close-torrent-modal">Close</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    const closeBtn = modal.querySelector("#close-torrent-modal");
+    closeBtn.addEventListener("click", () => modal.remove());
+    const downloadBtn = modal.querySelector("#download-torrent-btn");
+    downloadBtn.addEventListener("click", () => {
+      const magnet = modal.querySelector("#magnet-link").value.trim();
+      if (magnet) {
+        window.open(magnet, "_blank");
+        // Placeholder for preview
+        const preview = modal.querySelector("#torrent-preview");
+        preview.innerHTML = `<img src="https://via.placeholder.com/150" alt="Torrent Preview" />`;
+      }
+    });
   }
 
   function initOwnerPage() {

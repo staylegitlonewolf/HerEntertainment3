@@ -16,7 +16,7 @@ const VIDKING_MOVIE = (id)  => `https://www.vidking.net/embed/movie/${id}?color=
 const VIDKING_TV    = (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
 
 const PATH_PARTS = location.pathname.split('/').filter(Boolean);
-const SITE_ROOT = location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/';
+const SITE_ROOT = window.__SLWU_BASE || (location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/');
 function appUrl(rel = '') {
   return SITE_ROOT + String(rel).replace(/^\/+/, '');
 }
