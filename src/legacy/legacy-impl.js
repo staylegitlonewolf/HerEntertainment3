@@ -70,6 +70,32 @@ function spaNavigate(url) {
   }
 }
 
+function openTorrentModal(previewImageUrl) {
+  const posterUrl = previewImageUrl || "https://via.placeholder.com/320x180?text=Torrent+Preview";
+  const modal = document.createElement("div");
+  modal.className = "torrent-modal";
+  modal.innerHTML = `
+    <div class="torrent-modal-content">
+      <h2>Download Torrent</h2>
+      <input type="text" id="magnet-link" placeholder="Enter magnet link" />
+      <button id="download-torrent-btn">Download</button>
+      <div id="torrent-preview"><img src="${posterUrl}" alt="Torrent Preview" /></div>
+      <button id="close-torrent-modal">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector("#close-torrent-modal")?.addEventListener("click", () => modal.remove());
+  modal.querySelector("#download-torrent-btn")?.addEventListener("click", () => {
+    const magnet = modal.querySelector("#magnet-link").value.trim();
+    if (!magnet) return;
+    window.open(magnet, "_blank");
+    const preview = modal.querySelector("#torrent-preview");
+    if (preview) {
+      preview.innerHTML = `<img src="${posterUrl}" alt="Torrent Preview" />`;
+    }
+  });
+}
+
 function initSpaLinkInterceptor() {
   if (window.__slwu?._spaLinksWired) return;
   window.__slwu = window.__slwu || {};
@@ -760,6 +786,7 @@ async function initMoviePage() {
             }
           </button>
           <button class="detail-list-btn" id="watch-in-theater-btn">Watch in Theater</button>
+          <button class="detail-list-btn" id="download-btn">Download</button>
         </div>
       `;
 
@@ -782,6 +809,8 @@ async function initMoviePage() {
         target.searchParams.set("src", VIDKING_MOVIE(id));
         spaNavigate(target.toString());
       });
+      const downloadBtn = headerEl.querySelector("#download-btn");
+      if (downloadBtn) downloadBtn.addEventListener("click", () => openTorrentModal(movie.poster_path ? `${IMG_W500}${movie.poster_path}` : undefined));
     }
 
     // Player
@@ -954,6 +983,7 @@ async function initTvPage() {
             }
           </button>
           <button class="detail-list-btn" id="watch-in-theater-btn">Watch in Theater</button>
+          <button class="detail-list-btn" id="download-btn">Download</button>
         </div>
       `;
 
@@ -975,6 +1005,8 @@ async function initTvPage() {
         target.searchParams.set("src", VIDKING_TV(id, currentSeason, currentEpisode));
         spaNavigate(target.toString());
       });
+      const downloadBtn = headerEl.querySelector("#download-btn");
+      if (downloadBtn) downloadBtn.addEventListener("click", () => openTorrentModal(show.poster_path ? `${IMG_W500}${show.poster_path}` : undefined));
     }
 
     // Player
@@ -1725,6 +1757,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="global-search-sheet-inner">
           <div class="global-search-inputbar">
             <button id="global-catalog-more" class="remote-mini-btn" type="button">Load More</button>
+            <button id="global-catalog-torrent-btn" class="remote-mini-btn" type="button">Torrent</button>
             <div></div>
             <button id="global-catalog-close" class="remote-mini-btn">Close</button>
           </div>
@@ -2030,6 +2063,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hiddenClose) hiddenClose.onclick = () => closeAllSheets();
     const catalogClose = document.getElementById("global-catalog-close");
     if (catalogClose) catalogClose.onclick = () => closeAllSheets();
+    const catalogTorrent = document.getElementById("global-catalog-torrent-btn");
+    if (catalogTorrent) catalogTorrent.onclick = () => openTorrentModal();
     const catalogMore = document.getElementById("global-catalog-more");
     if (catalogMore) catalogMore.onclick = () => {
       try { renderGlobalCatalog(globalCatalogActive, { append: true }); } catch (_) {}
@@ -2702,6 +2737,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="${homeRoute()}" class="slwu-back-link">← Back</a>
             <h1>Catalog</h1>
           </div>
+          <button id="catalog-torrent-btn" class="remote-pill remote-pill--catalog" type="button">Torrent</button>
           <div id="categories-grid" class="categories-grid"></div>
         </div>
       </div>
@@ -2716,6 +2752,8 @@ document.addEventListener("DOMContentLoaded", () => {
         grid.appendChild(a);
       });
     }
+    const categoriesTorrentBtn = document.getElementById("catalog-torrent-btn");
+    if (categoriesTorrentBtn) categoriesTorrentBtn.addEventListener("click", () => openTorrentModal());
   }
 
   function initOwnerPage(opts = {}) {
