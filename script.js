@@ -12,8 +12,9 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG_W500  = "https://image.tmdb.org/t/p/w500";
 const IMG_ORIG  = "https://image.tmdb.org/t/p/original";
 
-const VIDKING_MOVIE = (id)  => `https://www.vidking.net/embed/movie/${id}?color=8B5CF6&autoPlay=false`;
-const VIDKING_TV    = (id, s, e) => `https://www.vidking.net/embed/tv/${id}/${s}/${e}?color=8B5CF6&autoPlay=false&nextEpisode=true&episodeSelector=true`;
+const FILMU_MOVIE = (id)  => `https://embed.filmu.in/movie/${id}`;
+const FILMU_TV    = (id, s, e) => `https://embed.filmu.in/tv/${id}/${s}/${e}`;
+const FILMU_ANIME = (id, s, e) => `https://embed.filmu.in/anime/${id}/${s}/${e}`;
 
 const PATH_PARTS = location.pathname.split('/').filter(Boolean);
 const SITE_ROOT = window.__SLWU_BASE || (location.hostname.endsWith('github.io') && PATH_PARTS.length ? `/${PATH_PARTS[0]}/` : '/');
@@ -641,7 +642,7 @@ async function initMoviePage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", VIDKING_MOVIE(id));
+        target.searchParams.set("src", FILMU_MOVIE(id));
         location.href = target.toString();
       });
       const downloadBtn = headerEl.querySelector("#download-btn");
@@ -653,7 +654,7 @@ async function initMoviePage() {
     // Player
     const playerContainer = $("#player-container");
     if (playerContainer) {
-      playerContainer.innerHTML = `<iframe src="${VIDKING_MOVIE(id)}" allow="autoplay; fullscreen"></iframe>`;
+      playerContainer.innerHTML = `<iframe src="${FILMU_MOVIE(id)}" allow="autoplay; fullscreen"></iframe>`;
     }
 
     // Sidebar poster
@@ -839,7 +840,7 @@ async function initTvPage() {
       const theaterBtn = headerEl.querySelector("#watch-in-theater-btn");
       if (theaterBtn) theaterBtn.addEventListener("click", () => {
         const target = new URL(appHref("theater/"));
-        target.searchParams.set("src", VIDKING_TV(id, currentSeason, currentEpisode));
+        target.searchParams.set("src", FILMU_TV(id, currentSeason, currentEpisode));
         location.href = target.toString();
       });
       const downloadBtn = headerEl.querySelector("#download-btn");
@@ -852,7 +853,7 @@ async function initTvPage() {
     function loadPlayer(season, episode) {
       const pc = $("#player-container");
       if (pc) {
-        pc.innerHTML = `<iframe src="${VIDKING_TV(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
+        pc.innerHTML = `<iframe src="${FILMU_TV(id, season, episode)}" allow="autoplay; fullscreen"></iframe>`;
       }
       // Update URL
       const url = new URL(location.href);
@@ -2078,7 +2079,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const poster = item.poster ? posterUrl(item.poster) : "";
         btn.innerHTML = `${poster ? `<img src="${esc(poster)}" alt="${esc(item.title)}" loading="lazy">` : `<span class="global-search-list-thumb-fallback">${esc((item.title||"?").slice(0,1))}</span>`}<span class="global-search-list-label">${esc(item.title)}</span>`;
         btn.onclick = () => {
-          const embedSrc = item.type === "tv" ? VIDKING_TV(item.id, 1, 1) : VIDKING_MOVIE(item.id);
+          const embedSrc = item.type === "tv" ? FILMU_TV(item.id, 1, 1) : item.type === "anime" ? FILMU_ANIME(item.id, 1, 1) : FILMU_MOVIE(item.id);
           iframe.src = embedSrc;
           setNowPlaying({ src: embedSrc, title: item.title, type: item.type, id: item.id });
         };
